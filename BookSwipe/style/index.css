@@ -1,0 +1,302 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: El Messiri;
+}
+
+@font-face {
+    font-family: El Messiri;
+    src: url(../fonts/Philosopher-Regular.ttf);
+}
+
+body {
+    background-image: url(../assets/img/ФОН1.png);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+}
+
+header {
+    background-color: #FE7C96;
+    padding: 8px 20px; 
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.logo {
+    width: 40px;
+    height: 40px;
+}
+
+.head {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.search {
+    width: 230px;
+    height: 25px;
+    border-radius: 21px;
+    background: #FFE6D0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    position: relative;
+}
+
+.input {
+    background: transparent;
+    border: none;
+    outline: none;
+    width: 80%;
+    font-size: 14px;
+    color: #5D212D;
+}
+
+.input::placeholder {
+    color: #5D212D;
+}
+
+.search-img {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.rating {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    font-size: 14px;
+    align-items: baseline;
+    margin-top: 10px;
+}
+
+.rating p {
+    margin: 0;
+    color: #5D212D;
+}
+
+.star-img {
+    width: 18px;
+    height: 18px;
+    margin-top: -5px;
+}
+
+.tittle-text {
+    font-size: 22px;
+    color: #FE7C96;
+    margin-top: 15px;
+}
+
+.book-cover {
+    background: #ffe6d0;
+    border-radius: 6px;
+    align-self: stretch;
+    width: 102px;
+    height: 150px;
+}
+
+.book-tittle {
+    font-size: 16px;
+    color: #5D212D;
+    font-weight: 500;
+}
+
+.book-author {
+    font-size: 13px;
+    color: #A34457;
+}
+
+.book-genre {
+    background: #febcbe;
+    border-radius: 50px;
+    width: 80px;
+    height: 23px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+}
+
+h2 {
+    color: #FE7C96;
+}
+
+main {
+    margin-top: 50px;
+    margin-left: 20px;
+    margin-bottom: 80px;
+}
+
+.book-swipe {
+    display: flex;
+    flex-direction: row;
+    gap: 20px; 
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    padding: 5px 0;
+    margin: 5px 0; 
+    padding-left: 0; 
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.book-swipe::-webkit-scrollbar {
+    display: none;
+}
+
+.footer {
+    background-color: #FE7C96;
+    border-top-left-radius: 40px;
+    border-top-right-radius: 40px;
+    padding: 8px 30px; 
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+
+.footer-list {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.img-list {
+    width: 30px;
+    height: 30px; 
+}
+
+.nav-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #5D212D;
+}
+
+.nav-list p {
+    font-size: 12px; 
+    margin-top: 2px;
+}
+
+.nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: #5D212D;
+    border-radius: 8px; 
+    transition: background-color 0.1s; 
+}
+
+.nav-link:active {
+    background-color: rgba(93, 33, 45, 0.1); 
+}
+
+.img-list {
+    width: 30px;
+    height: 30px; 
+}
+
+.nav-link p {
+    font-size: 12px; 
+    margin-top: 2px;
+    margin-bottom: 0;
+}
+
+/* --- АДАПТАЦИЯ ЭКРАНОВ ДО 375px --- */
+@media (max-width: 375px) {
+
+    header {
+        padding: 6px 15px;
+        gap: 6px;
+    }
+
+    .logo {
+        width: 35px;
+        height: 35px;
+    }
+
+    .search {
+        width: 200px;
+        height: 23px;
+        padding: 0 8px;
+    }
+
+    .input {
+        font-size: 13px;
+        width: 75%;
+    }
+
+    main {
+        margin-left: 15px;
+    }
+
+    h2 {
+        font-size: 20px;
+    }
+
+    .tittle-text {
+        font-size: 20px;
+        margin-top: 12px;
+    }
+
+    .book-cover {
+        width: 95px;
+        height: 140px;
+    }
+
+    .book-tittle {
+        font-size: 15px;
+    }
+
+    .book-author {
+        font-size: 12px;
+    }
+
+    .book-genre {
+        width: 75px;
+        height: 22px;
+        font-size: 12px;
+    }
+
+    .rating p {
+        font-size: 13px;
+    }
+
+    .star-img {
+        width: 16px;
+        height: 16px;
+        margin-top: -6px;
+    }
+
+    .book-swipe {
+        gap: 15px;
+    }
+
+    .footer {
+        padding: 6px 20px;
+    }
+
+    .img-list {
+        width: 28px;
+        height: 28px;
+    }
+
+    .nav-list p {
+        font-size: 11px;
+    }
+}

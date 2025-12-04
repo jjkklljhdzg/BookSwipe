@@ -1,0 +1,92 @@
+*{
+    margin: 0%;
+    padding: 0%;
+    box-sizing: border-box;
+    background-color: #FE7C96;
+    font-family: El Messiri;
+}
+
+@font-face {
+    font-family: El Messiri;
+    src: url(../fonts/Philosopher-Regular.ttf);
+}
+
+.main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    margin: 60px auto;
+}
+
+.create-acc {
+    font-size: 26px;
+    color: #F6EDE4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-weight: bold;
+}
+
+.logo {
+    height: 54px;
+    width: 54px;
+    margin-bottom: 10px;
+}
+
+.form-style {
+    width: 230px;
+    height: 25px;
+    border-radius: 21px;
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    position: relative;
+    border: none;
+    outline: none;
+    color: #5D212D;
+}
+
+.text {
+    color: #FEFEFE;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-size: 12px;
+}
+
+.button {
+    font-size: 16px;
+    border: none;
+    outline: none;
+    background: #FFE6D0;
+    color: #5D212D;
+    border-radius: 20px;
+    height: 50px;
+    padding: 15px 20px;
+    margin-top: 35px;
+    min-width: 250px; 
+    text-align: center;
+    display: block; 
+    margin-left: auto; 
+    margin-right: auto; 
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.button:active {
+    background: #5D212D;
+    color: #F6EDE4;
+}
+
+.text-1 {
+    color: #FEFEFE;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-weight: bold;
+}

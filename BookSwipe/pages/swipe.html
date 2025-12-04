@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../style/swipe.css">
+    <title>Лента для свайпов</title>
+</head>
+<body>
+    <header> <!-- шапка с логотипом и поиском -->
+      <img src="../assets/img/логотип.png" class="logo">
+        <div class="head">
+            <div class="search">
+                <input class="input" type="text" placeholder="Поиск книг">
+                <img src="../assets/img/поиск.png" class="search-img">
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="main1"> <!-- название книги, дата, автор и т.д. -->
+            <div class="name-book">
+            <h2>НАЗВАНИЕ КНИГИ</h2>
+            <div class="rating">
+                <img src="../assets/img/звезда.png" class="star-img">
+                <p>0.00</p>
+            </div>
+            </div>
+            <p>Название серии и номер</p>
+            <p>АВТОР</p>
+            <div class="genres"> 
+                <div class="book-genre">Жанр</div>
+                <div class="book-genre">Жанр</div>
+            </div>
+            <div class="year-book">
+                <p>год создания</p>
+                <p>xxx страниц</p>
+            </div>
+        </div>
+
+        <div class="dislike-like"> <!-- кнопки дизлайка и лайка -->
+            <img src="../assets/img/дизлайк.png" class="btn">
+            <div class="book-cover"></div>
+            <img src="../assets/img/лайк.png" class="btn">
+        </div>
+
+        <div class="main2"> <!-- описание книги -->
+            <div class="story-book" id="storyText">
+            Пьесы одного из выдающихся драматургов XIX века вот уже полтора столетия не сходят со сцен лучших театров мира, а по влиянию на дальнейшее развитие искусства с Ибсеном способен сравниться лишь Шекспир."Привидения" — одна из самых известных и в то же время мрачных и скандальных пьес Ибсена, ведь в ней автор обличил пороки современного ему общества. Постановки пьесы сопровождались бурными обсуждениями...
+            </div>
+            <button class="read-more-btn" onclick="toggleText()">
+            <span>Читать дальше</span>
+            <span class="arrow">▶</span>
+            </button>
+
+            <div class="list"> <!-- обновить книгу или добавить книгу в коллекцию -->
+                <div class="column-list">
+                    <img src="../assets/img/обновить.png">
+                    <p>ОБНОВИТЬ</p>
+                </div>
+                <div class="column-list">
+                    <img src="../assets/img/коллекция.png">
+                    <p>В КОЛЛЕКЦИЮ</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer>
+      <div class="footer">
+         <div class="footer-list">
+            <div class="nav-list"> <!-- СВАЙП -->
+                <img src="../assets/img/свайп.png" class="img-list">
+               <p>СВАЙП</p>
+            </div>
+            <div class="nav-list"> <!-- ГЛАВНАЯ -->
+                <a href="../index.html" target="_blank" class="nav-link">
+                    <img src="../assets/img/главная.png" class="img-list">
+                </a>
+               <p>ГЛАВНАЯ</p>
+            </div>
+            <div class="nav-list"> <!-- ПРОФИЛЬ -->
+                <a href="../pages/profile.html" target="_blank" class="nav-link">
+                    <img src="../assets/img/профиль.png" class="img-list">
+                </a>
+               <p>ПРОФИЛЬ</p>
+            </div>
+         </div>
+      </div>
+    </footer>
+
+    <script>
+        function toggleText() {
+            const textElement = document.getElementById('storyText');
+            const button = document.querySelector('.read-more-btn');
+            const buttonText = button.querySelector('span:first-child');
+            
+            textElement.classList.toggle('expanded');
+            
+            if (textElement.classList.contains('expanded')) {
+                buttonText.textContent = 'Свернуть';
+            } else {
+                buttonText.textContent = 'Читать дальше';
+            }
+        }
+    </script>
+
+</body>
+</html>
