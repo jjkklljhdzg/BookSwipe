@@ -8,7 +8,7 @@
 
 @font-face {
     font-family: El Messiri;
-    src: url(../fonts/Philosopher-Regular.ttf);
+    src: url(../assets/fonts/Philosopher-Regular.ttf);
 }
 
 .main {
@@ -90,3 +90,4 @@
     align-items: center;
     font-weight: bold;
 }
+
