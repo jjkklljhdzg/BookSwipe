@@ -7,7 +7,7 @@
 
 @font-face {
     font-family: El Messiri;
-    src: url(../fonts/Philosopher-Regular.ttf);
+    src: url(../assets/fonts/Philosopher-Regular.ttf);
 }
 
 body {
@@ -300,3 +300,4 @@ main {
         font-size: 11px;
     }
 }
+
