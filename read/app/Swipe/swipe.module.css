@@ -1,0 +1,444 @@
+/* swipe.module.css */
+
+.container {
+  background: url('/img/background.png') no-repeat center center;
+  background-size: cover;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  padding-bottom: 70px;
+}
+
+/* Шапка */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #FE7C96;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  width: 100%;
+}
+
+.logoArea {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Стили для картинки логотипа */
+.logoImage {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.searchContainer {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-search-bg);
+  border-radius: 20px;
+  padding: 10px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(93, 33, 45, 0.15);
+  width: 215px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.searchInput {
+  flex-grow: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--color-search-text);
+  width: 100%;
+}
+
+.searchInput::placeholder {
+  color: var(--color-search-text);
+  opacity: 0.8;
+}
+
+/* Поиск */
+.searchButton {
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-search-text);
+  font-size: 16px;
+  margin-left: 5px;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.searchIcon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.swipeWrapper {
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 180px);
+}
+
+.swipeContainer {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cardWrapper {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  margin-bottom: 20px;
+}
+
+/* Боковые кнопки - ВСЕГДА по бокам */
+.leftActionBtn,
+.rightActionBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  background: #ff8aa2;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+}
+
+.leftActionBtn {
+  left: -50px;
+}
+
+.rightActionBtn {
+  right: -50px;
+}
+
+/* Нижние кнопки */
+.bottomActions {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.middleBtn {
+  background: transparent;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 11px;
+  color: #7a2f3d;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.middleBtn img {
+  width: 22px;
+  height: 22px;
+}
+
+.loading, .emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  text-align: center;
+  color: #7a2f3d;
+}
+
+.emptyState h2 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.emptyState p {
+  font-size: 14px;
+  margin-bottom: 20px;
+  color: #d16b86;
+}
+
+.refreshButton {
+  background: #ff8aa2;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Адаптив для ОЧЕНЬ маленьких экранов (320px и меньше) */
+@media (max-width: 320px) {
+  .header {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .logoImage {
+    width: 26px;
+    height: 26px;
+  }
+
+  .searchContainer {
+    padding: 6px 10px;
+    width: 230px; /* Еще уже поиск */
+  }
+
+  .searchInput {
+    font-size: 12px;
+    padding: 4px 6px;
+  }
+
+  .searchButton {
+    font-size: 13px;
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Карточка уже */
+  .swipeContainer {
+    max-width: 270px; /* Уже чем было */
+  }
+  
+  .cardWrapper {
+    max-width: 230px; /* Уже чем было */
+  }
+  
+  /* Кнопки ближе к карточке и меньше */
+  .leftActionBtn {
+    left: -20px; /* Ближе чем было */
+  }
+  
+  .rightActionBtn {
+    right: -20px; /* Ближе чем было */
+  }
+  
+  .leftActionBtn,
+  .rightActionBtn {
+    width: 36px; /* Меньше чем было */
+    height: 36px;
+  }
+  
+  /* Нижние кнопки тоже меньше */
+  .bottomActions {
+    gap: 8px;
+    margin-top: 8px;
+  }
+  
+  .middleBtn {
+    font-size: 10px;
+    min-width: 70px;
+  }
+  
+  .middleBtn img {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Адаптив для экранов 321px - 375px */
+@media (min-width: 321px) and (max-width: 376px) {
+  .header {
+    padding: 9px 12px;
+    gap: 9px;
+  }
+
+  .logoImage {
+    width: 28px;
+    height: 28px;
+  }
+
+  .searchContainer {
+    padding: 4px 12px;
+    width: 230px; 
+  }
+
+  .searchInput {
+    font-size: 13px;
+    padding: 5px 7px;
+  }
+
+  .searchButton {
+    font-size: 14px;
+    width: 17px;
+    height: 17px;
+  }
+
+  /* Карточка уже */
+  .swipeContainer {
+    max-width: 300px; /* Уже чем было */
+  }
+  
+  .cardWrapper {
+    max-width: 260px; /* Уже чем было */
+  }
+  
+  /* Кнопки ближе к карточке */
+  .leftActionBtn {
+    left: -25px; /* Ближе чем было */
+  }
+  
+  .rightActionBtn {
+    right: -25px; /* Ближе чем было */
+  }
+  
+  .leftActionBtn,
+  .rightActionBtn {
+    width: 40px; /* Немного меньше */
+    height: 40px;
+  }
+  
+  .bottomActions {
+    gap: 10px;
+  }
+  
+  .middleBtn {
+    font-size: 10px;
+  }
+  
+  .middleBtn img {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Для экранов 376px - 767px */
+@media (min-width: 376px) and (max-width: 767px) {
+  .header {
+    padding: 12px 16px;
+  }
+
+  .searchContainer {
+    width: 300px; /* Нормальная ширина */
+    padding: 4px 16px;
+  }
+  
+  .leftActionBtn {
+    left: -35px; /* Нормальный отступ */
+  }
+  
+  .rightActionBtn {
+    right: -35px; /* Нормальный отступ */
+  }
+  
+  .leftActionBtn,
+  .rightActionBtn {
+    width: 44px; /* Нормальный размер */
+    height: 44px;
+  }
+  
+  .swipeContainer {
+    max-width: 330px; /* Нормальная ширина */
+  }
+  
+  .cardWrapper {
+    max-width: 300px; /* Нормальная ширина */
+  }
+}
+
+/* Для планшетов 768px - 1023px */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .header {
+    padding: 16px 24px;
+  }
+
+  .logoImage {
+    width: 36px;
+    height: 36px;
+  }
+
+  .searchContainer {
+    width: 350px; /* Нормальная ширина */
+    padding: 4px 16px;
+  }
+
+  .searchInput {
+    font-size: 16px;
+    padding: 8px 12px;
+  }
+
+  .searchButton {
+    font-size: 18px;
+    width: 22px;
+    height: 22px;
+  }
+  
+  .leftActionBtn {
+    left: -60px;
+  }
+  
+  .rightActionBtn {
+    right: -60px;
+  }
+  
+  .leftActionBtn,
+  .rightActionBtn {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .swipeContainer {
+    max-width: 340px;
+  }
+  
+  .cardWrapper {
+    max-width: 340px;
+  }
+}
+
+/* Для десктопов 1024px+ */
+@media (min-width: 1024px) {
+  .searchContainer {
+    width: 500px; /* Нормальная ширина */
+    padding: 4px 16px;
+  }
+  .swipeContainer {
+    max-width: 360px;
+  }
+  
+  .cardWrapper {
+    max-width: 360px;
+  }
+  
+  .leftActionBtn {
+    left: -70px;
+  }
+  
+  .rightActionBtn {
+    right: -70px;
+  }
+  
+  .leftActionBtn,
+  .rightActionBtn {
+    width: 52px;
+    height: 52px;
+  }
+}
