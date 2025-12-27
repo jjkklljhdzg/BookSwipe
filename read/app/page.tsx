@@ -4,7 +4,7 @@ import SearchIcon from '/img/saerch.png';
 import BookCard from '@/components/BookCard/BookCard';
 import BottomNav from '@/components/BottomNav/page';
 
-// Данные для книг
+// Основной объект с данными о книгах, разделенный на категории
 const bookData = {
   recommended: [
     {
@@ -102,9 +102,11 @@ const bookData = {
   ],
 };
 
+// Главный компонент страницы - домашняя страница приложения
 export default function Home() {
   return (
     <div className={styles.container}>
+      {/* Шапка страницы с логотипом и поиском */}
       <header className={styles.header}>
         <div className={styles.logoArea}>
           <Image
@@ -113,7 +115,7 @@ export default function Home() {
             width={32}
             height={32}
             className={styles.logoImage}
-            priority
+            priority  // Приоритетная загрузка изображения логотипа
           />
         </div>
         <div className={styles.searchContainer}>
@@ -124,7 +126,7 @@ export default function Home() {
           />
           <button className={styles.searchButton} aria-label="Search">
             <Image
-              src="/img/poisk.svg"
+              src="/img/saerch.png"
               alt="Поиск"
               width={20}
               height={20}
@@ -134,15 +136,17 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Основной контент страницы */}
       <main className={styles.popular}>
         <div className={styles.sectionTitle}>
           <h2>ПОДОБРАНО СПЕЦИАЛЬНО ДЛЯ ВАС</h2>
         </div>
 
-        {/* Рекомендованные книги */}
+        {/* Секция с рекомендованными книгами */}
         <div className={styles.special}>
           <h2>По вашим предпочтениям</h2>
           <div className={styles.popularDestinations}>
+            {/* Отображение карточек рекомендованных книг */}
             {bookData.recommended.map((book) => (
               <BookCard
                 key={book.id}
@@ -157,10 +161,11 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Новинки */}
+        {/* Секция с новыми книгами */}
         <div className={styles.special}>
           <h2>Новинки</h2>
           <div className={styles.popularDestinations}>
+            {/* Отображение карточек новых книг */}
             {bookData.newArrivals.map((book) => (
               <BookCard
                 key={book.id}
@@ -175,10 +180,11 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Популярные */}
+        {/* Секция с популярными книгами */}
         <div className={styles.special}>
           <h2>Популярные</h2>
           <div className={styles.popularDestinations}>
+            {/* Отображение карточек популярных книг */}
             {bookData.popular.map((book) => (
               <BookCard
                 key={book.id}
@@ -194,6 +200,7 @@ export default function Home() {
         </div>
       </main>
 
+      {/* Нижняя навигационная панель */}
       <BottomNav />
     </div>
   );

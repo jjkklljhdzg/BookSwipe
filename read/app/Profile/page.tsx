@@ -1,4 +1,4 @@
-'use client';
+'use client'; // Указывает, что это клиентский компонент Next.js
 
 import Image from "next/image";
 import styles from "./profile.module.css";
@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import BookCard from '@/components/BookCard/BookCard';
 
+// Данные книг для раздела "Моя коллекция"
 const bookData = {
     recommended: [
         {
@@ -35,28 +36,33 @@ const bookData = {
     ]
 };
 
+// Навигационные элементы (только одна кнопка "Назад" в данном случае)
 const navItems = [
     { icon: '/img/back.png', label: 'Свайп', href: '/', active: true },
 ];
 
+// Основной компонент страницы профиля пользователя
 export default function ProfilePage() {
+    // Состояние режима редактирования профиля
     const [isEditing, setIsEditing] = useState(false);
+    // Состояние данных пользователя
     const [userData, setUserData] = useState({
         name: 'Имя Фамилия',
         nickname: '@никнейм',
         avatar: '/img/ava.jpg',
         dateOfBirth: '00 00 0000'
     });
+    // Ref для скрытого input элемента загрузки аватара
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Загружаем сохраненные данные из localStorage при монтировании
+    // Загрузка сохраненных данных из localStorage при монтировании компонента
     useEffect(() => {
         const savedName = localStorage.getItem('userName');
         const savedNickname = localStorage.getItem('userNickname');
         const savedAvatar = localStorage.getItem('userAvatar');
         const savedDateOfBirth = localStorage.getItem('userDateOfBirth');
-        const savedLocation = localStorage.getItem('userLocation');
 
+        // Обновляем состояние данными из localStorage, если они есть
         setUserData(prev => ({
             ...prev,
             name: savedName || prev.name,
@@ -66,16 +72,19 @@ export default function ProfilePage() {
         }));
     }, []);
 
+    // Обработчик клика по аватару (открывает диалог выбора файла)
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
     };
 
+    // Обработчик изменения аватара (загрузка нового изображения)
     const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const newAvatar = e.target?.result as string;
+                // Обновляем аватар в состоянии и сохраняем в localStorage
                 setUserData(prev => ({ ...prev, avatar: newAvatar }));
                 localStorage.setItem('userAvatar', newAvatar);
             };
@@ -83,11 +92,13 @@ export default function ProfilePage() {
         }
     };
 
+    // Обработчик изменения полей ввода в форме редактирования
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
         setUserData(prev => ({ ...prev, [id]: value }));
     };
 
+    // Обработчик сохранения изменений профиля
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -97,13 +108,14 @@ export default function ProfilePage() {
         localStorage.setItem('userDateOfBirth', userData.dateOfBirth);
 
         alert('Профиль успешно обновлен!');
-        setIsEditing(false);
+        setIsEditing(false); // Выходим из режима редактирования
     };
 
+    // Режим редактирования профиля
     if (isEditing) {
         return (
             <div className={styles.container}>
-                {/* Верхняя панель редактирования */}
+                {/* Верхняя панель с кнопкой "Назад" и заголовком */}
                 <div className={styles.topBar}>
                     <span className={styles.backArrow}>
                         <button
@@ -122,7 +134,7 @@ export default function ProfilePage() {
                     <h1 className={styles.editTitle}>Редактирование</h1>
                 </div>
 
-                {/* Аватар в режиме редактирования */}
+                {/* Блок с аватаром пользователя в режиме редактирования */}
                 <div className={styles.avatarBlock}>
                     <div className={styles.avatarContainer}>
                         <div
@@ -140,6 +152,7 @@ export default function ProfilePage() {
                                 height={30}
                             />
                         </button>
+                        {/* Скрытый input для загрузки файлов */}
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -152,7 +165,7 @@ export default function ProfilePage() {
                     <div className={styles.nickname}>{userData.nickname}</div>
                 </div>
 
-                {/* Форма редактирования */}
+                {/* Форма редактирования профиля */}
                 <form onSubmit={handleSave} className={styles.editForm}>
                     <div className={styles.formGroup}>
                         <label htmlFor="name">Имя</label>
@@ -198,10 +211,11 @@ export default function ProfilePage() {
         );
     }
 
+    // Основной режим просмотра профиля
     return (
         <div className={styles.container}>
 
-            {/* Верхняя панель */}
+            {/* Верхняя панель навигации */}
             <div className={styles.topBar}>
                 <span className={styles.backArrow}>
                     {navItems.map((item) => (
@@ -221,6 +235,7 @@ export default function ProfilePage() {
                         </Link>
                     ))}
                 </span>
+                {/* Кнопка настроек для перехода в режим редактирования */}
                 <button
                     className={styles.settingsButton}
                     onClick={() => setIsEditing(true)}
@@ -235,7 +250,7 @@ export default function ProfilePage() {
                 </button>
             </div>
 
-            {/* Аватар */}
+            {/* Блок с аватаром пользователя */}
             <div className={styles.avatarBlock}>
                 <div
                     className={styles.avatar}
@@ -245,10 +260,10 @@ export default function ProfilePage() {
                 <div className={styles.nickname}>{userData.nickname}</div>
             </div>
 
-            {/* Моя коллекция */}
+            {/* Заголовок раздела "Моя коллекция" */}
             <div className={styles.sectionTitle}>МОЯ КОЛЛЕКЦИЯ</div>
 
-            {/* Переключатели */}
+            {/* Табы для фильтрации коллекции */}
             <div className={styles.tabs}>
                 <button className={styles.tab}>Читаю</button>
                 <button className={styles.tab}>Хочу прочитать</button>
@@ -263,21 +278,21 @@ export default function ProfilePage() {
                     {bookData.recommended.map((book) => (
                         <BookCard
                             key={book.id}
-                            id={book.id}          // добавляем id
+                            id={book.id}          // уникальный идентификатор книги
                             title={book.title}
                             author={book.author}
                             rating={book.rating}
                             imageUrl={book.imageUrl}
                             href={book.href}
                         />
-
                     ))}
                 </div>
             </div>
 
-            {/* Мои отзывы */}
+            {/* Заголовок раздела "Мои отзывы" */}
             <div className={styles.sectionTitle}>МОИ ОТЗЫВЫ</div>
 
+            {/* Список отзывов пользователя */}
             <div className={styles.reviewList}>
                 {[1, 2].map((item) => (
                     <div key={item} className={styles.reviewCard}>
