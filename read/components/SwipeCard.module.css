@@ -16,7 +16,7 @@
 }
 
 .active {
-  z-index: 10;
+  z-index: 0;
 }
 
 .cardHeader {
@@ -152,7 +152,7 @@
   color: #ff4a6f;
 }
 
-/* Адаптив для очень маленьких экранов (до 320px) */
+/* Адаптив для оч маленьких экранов */
 @media (max-width: 320px) {
   .swipeCard {
     max-width: 240px;

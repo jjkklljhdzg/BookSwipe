@@ -1,4 +1,4 @@
-'use client'; // Указывает, что это клиентский компонент Next.js
+'use client';
 
 import Image from "next/image";
 import styles from "./profile.module.css";
@@ -6,7 +6,6 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import BookCard from '@/components/BookCard/BookCard';
 
-// Данные книг для раздела "Моя коллекция"
 const bookData = {
     recommended: [
         {
@@ -14,7 +13,7 @@ const bookData = {
             title: 'Название',
             author: 'Автор',
             rating: '4.4',
-            imageUrl: '/img/design3.jpg',
+            imageUrl: '/img/design4.jpg',
             href: '/book/1'
         },
         {
@@ -36,71 +35,61 @@ const bookData = {
     ]
 };
 
-// Навигационные элементы (только одна кнопка "Назад" в данном случае)
 const navItems = [
     { icon: '/img/back.png', label: 'Свайп', href: '/', active: true },
 ];
 
-// Основной компонент страницы профиля пользователя
 export default function ProfilePage() {
-    // Состояние режима редактирования профиля
     const [isEditing, setIsEditing] = useState(false);
-    // Состояние данных пользователя
     const [userData, setUserData] = useState({
         name: 'Имя Фамилия',
         nickname: '@никнейм',
         avatar: '/img/ava.jpg',
         dateOfBirth: '00 00 0000'
     });
-    // Ref для скрытого input элемента загрузки аватара
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null); // Создаёт ссылку на скрытую страницу
 
-    // Загрузка сохраненных данных из localStorage при монтировании компонента
+    // Загружаем сохраненные данные из localStorage при монтировании
     useEffect(() => {
         const savedName = localStorage.getItem('userName');
         const savedNickname = localStorage.getItem('userNickname');
         const savedAvatar = localStorage.getItem('userAvatar');
         const savedDateOfBirth = localStorage.getItem('userDateOfBirth');
+        const savedLocation = localStorage.getItem('userLocation');
 
-        // Обновляем состояние данными из localStorage, если они есть
         setUserData(prev => ({
-            ...prev,
-            name: savedName || prev.name,
+            ...prev, //копируем старые данные
+            name: savedName || prev.name, // если есть в localStorage — берём, иначе — стандартные данные 
             nickname: savedNickname || prev.nickname,
             avatar: savedAvatar || prev.avatar,
             dateOfBirth: savedDateOfBirth || prev.dateOfBirth
         }));
     }, []);
 
-    // Обработчик клика по аватару (открывает диалог выбора файла)
     const handleAvatarClick = () => {
-        fileInputRef.current?.click();
+        fileInputRef.current?.click(); // Программно кликает на скрытый input
     };
 
-    // Обработчик изменения аватара (загрузка нового изображения)
     const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
+        const file = event.target.files?.[0]; // Берём первый выбранный файл
         if (file) {
-            const reader = new FileReader();
+            const reader = new FileReader(); // Создаём FileReader для чтения файла
             reader.onload = (e) => {
-                const newAvatar = e.target?.result as string;
-                // Обновляем аватар в состоянии и сохраняем в localStorage
-                setUserData(prev => ({ ...prev, avatar: newAvatar }));
-                localStorage.setItem('userAvatar', newAvatar);
+                const newAvatar = e.target?.result as string; // Получаем Data URL (base64)
+                setUserData(prev => ({ ...prev, avatar: newAvatar })); // Обновляем расположение 
+                localStorage.setItem('userAvatar', newAvatar); // Сохраняем в localStorage
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(file); // Читаем файл 
         }
     };
 
-    // Обработчик изменения полей ввода в форме редактирования
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { id, value } = e.target;
-        setUserData(prev => ({ ...prev, [id]: value }));
+        const { id, value } = e.target; // id = "name", value = введённый текст
+        setUserData(prev => ({ ...prev, [id]: value })); // Динамически обновляем поле
     };
 
-    // Обработчик сохранения изменений профиля
     const handleSave = (e: React.FormEvent) => {
-        e.preventDefault();
+        e.preventDefault();  // Предотвращаем перезагрузку страницы
 
         // Сохраняем данные в localStorage
         localStorage.setItem('userName', userData.name);
@@ -108,14 +97,13 @@ export default function ProfilePage() {
         localStorage.setItem('userDateOfBirth', userData.dateOfBirth);
 
         alert('Профиль успешно обновлен!');
-        setIsEditing(false); // Выходим из режима редактирования
+        setIsEditing(false); // Переключаемся в режим просмотра
     };
 
-    // Режим редактирования профиля
     if (isEditing) {
         return (
             <div className={styles.container}>
-                {/* Верхняя панель с кнопкой "Назад" и заголовком */}
+                {/* Верхняя панель редактирования */}
                 <div className={styles.topBar}>
                     <span className={styles.backArrow}>
                         <button
@@ -133,8 +121,6 @@ export default function ProfilePage() {
                     </span>
                     <h1 className={styles.editTitle}>Редактирование</h1>
                 </div>
-
-                {/* Блок с аватаром пользователя в режиме редактирования */}
                 <div className={styles.avatarBlock}>
                     <div className={styles.avatarContainer}>
                         <div
@@ -152,7 +138,6 @@ export default function ProfilePage() {
                                 height={30}
                             />
                         </button>
-                        {/* Скрытый input для загрузки файлов */}
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -165,7 +150,7 @@ export default function ProfilePage() {
                     <div className={styles.nickname}>{userData.nickname}</div>
                 </div>
 
-                {/* Форма редактирования профиля */}
+                {/* Форма редактирования */}
                 <form onSubmit={handleSave} className={styles.editForm}>
                     <div className={styles.formGroup}>
                         <label htmlFor="name">Имя</label>
@@ -211,11 +196,10 @@ export default function ProfilePage() {
         );
     }
 
-    // Основной режим просмотра профиля
     return (
         <div className={styles.container}>
 
-            {/* Верхняя панель навигации */}
+            {/* Верхняя панель */}
             <div className={styles.topBar}>
                 <span className={styles.backArrow}>
                     {navItems.map((item) => (
@@ -235,7 +219,6 @@ export default function ProfilePage() {
                         </Link>
                     ))}
                 </span>
-                {/* Кнопка настроек для перехода в режим редактирования */}
                 <button
                     className={styles.settingsButton}
                     onClick={() => setIsEditing(true)}
@@ -250,7 +233,6 @@ export default function ProfilePage() {
                 </button>
             </div>
 
-            {/* Блок с аватаром пользователя */}
             <div className={styles.avatarBlock}>
                 <div
                     className={styles.avatar}
@@ -260,10 +242,8 @@ export default function ProfilePage() {
                 <div className={styles.nickname}>{userData.nickname}</div>
             </div>
 
-            {/* Заголовок раздела "Моя коллекция" */}
             <div className={styles.sectionTitle}>МОЯ КОЛЛЕКЦИЯ</div>
 
-            {/* Табы для фильтрации коллекции */}
             <div className={styles.tabs}>
                 <button className={styles.tab}>Читаю</button>
                 <button className={styles.tab}>Хочу прочитать</button>
@@ -272,27 +252,26 @@ export default function ProfilePage() {
                 <button className={styles.tab}>В избранном</button>
             </div>
 
-            {/* Горизонтальная лента книг */}
             <div className={styles.special}>
                 <div className={styles.popularDestinations}>
                     {bookData.recommended.map((book) => (
                         <BookCard
                             key={book.id}
-                            id={book.id}          // уникальный идентификатор книги
+                            id={book.id}
                             title={book.title}
                             author={book.author}
                             rating={book.rating}
                             imageUrl={book.imageUrl}
                             href={book.href}
                         />
+
                     ))}
                 </div>
             </div>
 
-            {/* Заголовок раздела "Мои отзывы" */}
+            {/* Мои отзывы */}
             <div className={styles.sectionTitle}>МОИ ОТЗЫВЫ</div>
 
-            {/* Список отзывов пользователя */}
             <div className={styles.reviewList}>
                 {[1, 2].map((item) => (
                     <div key={item} className={styles.reviewCard}>

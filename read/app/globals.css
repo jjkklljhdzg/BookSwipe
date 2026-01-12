@@ -1,6 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* 1. Cбрасывает стандартные стили браузера для элементов и задаёт им единый внешний вид */
+/* 2. Подключает готовые классы-компоненты Tailwind — если они определены в конфиге */
+/* 3. Генерирует все утилитарные классы Tailwind */
 
 :root {
   --color-pink-light: #FFDFE5;
@@ -20,6 +23,7 @@
   margin: 0;
   font-family: Philosopher;
 }
+
 
 html,
 body {
@@ -53,7 +57,6 @@ a {
   scrollbar-color: var(--color-pink-medium) #f0f0f0;
   -webkit-overflow-scrolling: touch;
 }
-
 
 @font-face {
   font-family: Philosopher;
