@@ -1,0 +1,134 @@
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  animation: slideIn 0.3s ease-out;
+  max-width: 350px;
+  min-width: 300px;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.notification.slideOut {
+  animation: slideOut 0.3s ease-in forwards;
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.icon {
+  font-size: 18px;
+  font-weight: bold;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.message {
+  font-size: 14px;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.closeButton:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Типы уведомлений */
+.success {
+  background: linear-gradient(135deg, #ffeae2 0%, #ffd6c9 100%);
+  border-left: 4px solid #ff8c9d;
+  color: #5a1f1f;
+  border: 1px solid #f4b6c3;
+}
+
+.success .icon {
+  background-color: #ff8c9d;
+  color: white;
+}
+
+.error {
+  background: linear-gradient(135deg, #ffeaea 0%, #ffd6d6 100%);
+  border-left: 4px solid #ff4757;
+  color: #5a1f1f;
+  border: 1px solid #f4b6c3;
+}
+
+.error .icon {
+  background-color: #ff4757;
+  color: white;
+}
+
+.info {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-left: 4px solid #2196F3;
+  color: #1565c0;
+  border: 1px solid #f4b6c3;
+}
+
+.info .icon {
+  background-color: #2196F3;
+  color: white;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .notification {
+    left: 20px;
+    right: 20px;
+    max-width: none;
+    min-width: auto;
+  }
+}
