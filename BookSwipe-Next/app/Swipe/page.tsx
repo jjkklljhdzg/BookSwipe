@@ -2,21 +2,23 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import styles from './swipe.module.css';
+import styles from './swipe.module.css'; // Убедитесь, что стили правильные
 import BottomNav from '@/components/BottomNav/page';
-import SwipeCard from '@/components/SwipeCard/SwipeCard'; // Исправляем путь
+import SwipeCard from '@/components/SwipeCard/SwipeCard';
 import { useRouter } from 'next/navigation';
 
+// Используйте тот же интерфейс что и на главной
 interface Book {
   id: number;
   title: string;
   author: string;
   genres: string;
-  published_at: string;
-  annotation: string;
-  series_title: string;
-  series_number: string;
-  cover_url: string;
+  publishedAt?: string;
+  annotation?: string;
+  seriesTitle?: string;
+  seriesNumber?: number;
+  coverUrl: string;
+  rating: string;
 }
 
 export default function SwipePage() {
@@ -25,8 +27,8 @@ export default function SwipePage() {
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  
-  // Состояния для поиска (взято у другого человека)
+
+  // Состояния для поиска
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -41,10 +43,26 @@ export default function SwipePage() {
 
   async function loadBooks() {
     try {
+      setLoading(true);
       const response = await fetch('/api/books');
       const fetchedBooks = await response.json();
-      setBooks(fetchedBooks);
-      setAllBooks(fetchedBooks);
+
+      // Преобразуем данные к нужному формату
+      const formattedBooks: Book[] = fetchedBooks.map((book: any) => ({
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        genres: book.genres,
+        publishedAt: book.publishedAt,
+        annotation: book.annotation,
+        seriesTitle: book.seriesTitle,
+        seriesNumber: book.seriesNumber,
+        coverUrl: book.coverUrl || '/img/default-book.jpg',
+        rating: book.rating || '0.0'
+      }));
+
+      setBooks(formattedBooks);
+      setAllBooks(formattedBooks);
       setCurrentIndex(0);
     } catch (error) {
       console.error('Failed to load books:', error);
@@ -53,21 +71,21 @@ export default function SwipePage() {
     }
   }
 
-  // Функции поиска (взято у другого человека)
+  // Функции поиска
   const searchBooks = useCallback((query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
     }
-    
+
     const lowerQuery = query.toLowerCase();
-    const results = allBooks.filter(book => 
+    const results = allBooks.filter(book =>
       book.title.toLowerCase().includes(lowerQuery) ||
       book.author.toLowerCase().includes(lowerQuery) ||
-      book.genres.toLowerCase().includes(lowerQuery) ||
-      book.series_title.toLowerCase().includes(lowerQuery)
+      (book.genres && book.genres.toLowerCase().includes(lowerQuery)) ||
+      (book.seriesTitle && book.seriesTitle.toLowerCase().includes(lowerQuery))
     );
-    
+
     setSearchResults(results.slice(0, 10));
   }, [allBooks]);
 
@@ -75,7 +93,7 @@ export default function SwipePage() {
     const value = e.target.value;
     setSearchQuery(value);
     searchBooks(value);
-    
+
     if (value.length > 0) {
       setShowResults(true);
     } else {
@@ -108,11 +126,12 @@ export default function SwipePage() {
 
   const handleSwipe = (direction: 'left' | 'right') => {
     console.log(`Swiped ${direction} on book: ${books[currentIndex]?.title}`);
-    
+
     if (currentIndex < books.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      setBooks([]);
+      // Если книги закончились, перезагружаем
+      loadBooks();
     }
   };
 
@@ -133,7 +152,35 @@ export default function SwipePage() {
   };
 
   const handleSave = async () => {
-    console.log('Saved to collection:', books[currentIndex]?.title);
+    const currentBook = books[currentIndex];
+    console.log('Saved to collection:', currentBook?.title);
+
+    // Здесь можно добавить запрос на сохранение в коллекцию
+    try {
+      const response = await fetch('/api/collection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookId: currentBook.id,
+          collectionType: 'saved'
+        })
+      });
+
+      if (response.ok) {
+        console.log('Book saved to collection');
+      }
+    } catch (error) {
+      console.error('Error saving book:', error);
+    }
+
+    // Переходим к следующей книге
+    if (currentIndex < books.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      loadBooks();
+    }
   };
 
   const currentBook = books[currentIndex];
@@ -151,8 +198,8 @@ export default function SwipePage() {
             priority
           />
         </div>
-        
-        {/* Контейнер поиска (взято у другого человека) */}
+
+        {/* Контейнер поиска */}
         <div className={styles.searchWrapper} ref={searchRef}>
           <div className={styles.searchContainer}>
             <input
@@ -179,10 +226,10 @@ export default function SwipePage() {
               />
             </button>
           </div>
-          
+
           {showResults && (
             <>
-              <div 
+              <div
                 className={styles.searchOverlay}
                 onClick={() => setShowResults(false)}
               />
@@ -199,7 +246,7 @@ export default function SwipePage() {
                       onClick={() => handleResultClick(book)}
                     >
                       <Image
-                        src={book.cover_url || '/img/default-book.jpg'}
+                        src={book.coverUrl || '/img/default-book.jpg'}
                         alt={book.title}
                         width={40}
                         height={60}
@@ -208,10 +255,9 @@ export default function SwipePage() {
                       <div className={styles.searchResultInfo}>
                         <h4 className={styles.searchResultTitle}>{book.title}</h4>
                         <p className={styles.searchResultAuthor}>{book.author}</p>
-                        {book.series_title && (
+                        {book.genres && (
                           <p className={styles.searchResultAuthor} style={{ fontSize: '11px' }}>
-                            {book.series_title}
-                            {book.series_number && ` #${book.series_number}`}
+                            {book.genres}
                           </p>
                         )}
                       </div>
@@ -231,8 +277,8 @@ export default function SwipePage() {
           <div className={styles.emptyState}>
             <h2>Вы просмотрели все книги!</h2>
             <p>Загляните сюда позже или обновите список</p>
-            <button 
-              onClick={loadBooks} 
+            <button
+              onClick={loadBooks}
               className={styles.refreshButton}
             >
               Обновить
@@ -248,16 +294,16 @@ export default function SwipePage() {
                 isActive={true}
               />
             </div>
-            <button 
-              className={styles.leftActionBtn} 
+            <button
+              className={styles.leftActionBtn}
               onClick={handleDislike}
               aria-label="Dislike"
             >
               <Image src="/img/dislike.png" alt="dislike" width={28} height={28} />
             </button>
 
-            <button 
-              className={styles.rightActionBtn} 
+            <button
+              className={styles.rightActionBtn}
               onClick={handleLike}
               aria-label="Like"
             >
@@ -265,15 +311,15 @@ export default function SwipePage() {
             </button>
 
             <div className={styles.bottomActions}>
-              <button 
+              <button
                 className={styles.middleBtn}
                 onClick={handleSkip}
               >
                 <Image src="/img/reload.png" alt="skip" width={22} height={22} />
-                <span>Обновить</span>
+                <span>Пропустить</span>
               </button>
 
-              <button 
+              <button
                 className={styles.middleBtn}
                 onClick={handleSave}
               >

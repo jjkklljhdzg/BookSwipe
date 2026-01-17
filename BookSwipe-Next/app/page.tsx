@@ -5,140 +5,114 @@ import Image from 'next/image';
 import styles from './page.module.css';
 import BookCard from '@/components/BookCard/BookCard';
 import BottomNav from '@/components/BottomNav/page';
-import { useRouter } from 'next/navigation'; 
+import { useRouter } from 'next/navigation';
 
-// Тип для книги
+// Интерфейс книги
 interface Book {
   id: number;
   title: string;
   author: string;
+  genres: string;
+  publishedAt?: string;
+  annotation?: string;
+  seriesTitle?: string;
+  seriesNumber?: number;
+  coverUrl: string;
+  createdAt?: string;
   rating: string;
-  imageUrl: string;
+  reviewCount?: number;
   href: string;
-  genres?: string;
 }
-
-// === ДАННЫЕ ДЛЯ ПОИСКА (взято у другого человека) ===
-const allBooksForSearch: Book[] = [
-  {
-    id: 1,
-    title: 'Название книги 1',
-    author: 'Автор 1',
-    rating: '4.4',
-    imageUrl: '/img/design3.jpg',
-    href: '/book/1',
-    genres: 'Фэнтези'
-  },
-  {
-    id: 2,
-    title: 'Название книги 2',
-    author: 'Автор 2',
-    rating: '4.4',
-    imageUrl: '/img/design2.jpg',
-    href: '/book/2',
-    genres: 'Детектив'
-  },
-  {
-    id: 3,
-    title: 'Название книги 3',
-    author: 'Автор 3',
-    rating: '4.4',
-    imageUrl: '/img/design1.jpg',
-    href: '/book/3',
-    genres: 'Научная фантастика'
-  },
-  {
-    id: 4,
-    title: 'Название книги 4',
-    author: 'Автор 4',
-    rating: '4.4',
-    imageUrl: '/img/vogue1design.jpg',
-    href: '/book/4',
-    genres: 'Роман'
-  },
-  {
-    id: 5,
-    title: 'Название книги 5',
-    author: 'Автор 5',
-    rating: '4.4',
-    imageUrl: '/img/vogue2design.jpg',
-    href: '/book/5',
-    genres: 'Драма'
-  },
-  // Новинки
-  {
-    id: 6,
-    title: 'Новинка 1',
-    author: 'Автор 6',
-    rating: '4.4',
-    imageUrl: '/img/design3.jpg',
-    href: '/book/6',
-    genres: 'Фэнтези'
-  },
-  {
-    id: 7,
-    title: 'Новинка 2',
-    author: 'Автор 7',
-    rating: '4.4',
-    imageUrl: '/img/vogue2design.jpg',
-    href: '/book/7',
-    genres: 'Драма'
-  },
-  {
-    id: 8,
-    title: 'Новинка 3',
-    author: 'Автор 8',
-    rating: '4.4',
-    imageUrl: '/img/design1.jpg',
-    href: '/book/8',
-    genres: 'Научная фантастика'
-  },
-  // Популярные
-  {
-    id: 9,
-    title: 'Популярное 1',
-    author: 'Автор 9',
-    rating: '4.4',
-    imageUrl: '/img/vogue1design.jpg',
-    href: '/book/9',
-    genres: 'Роман'
-  },
-  {
-    id: 10,
-    title: 'Популярное 2',
-    author: 'Автор 10',
-    rating: '4.4',
-    imageUrl: '/img/design2.jpg',
-    href: '/book/10',
-    genres: 'Детектив'
-  },
-  {
-    id: 11,
-    title: 'Популярное 3',
-    author: 'Автор 11',
-    rating: '4.4',
-    imageUrl: '/img/vogue3design.jpg',
-    href: '/book/11',
-    genres: 'Триллер'
-  },
-];
-
-// Данные для отображения по категориям
-const bookData = {
-  recommended: allBooksForSearch.slice(0, 5),
-  newArrivals: allBooksForSearch.slice(5, 8),
-  popular: allBooksForSearch.slice(8, 11),
-};
 
 export default function Home() {
   const router = useRouter();
   
-  // Состояния для поиска (взято у другого человека)
+  // Состояния для книг из базы данных
+  const [bookData, setBookData] = useState<{
+    recommended: Book[];
+    newArrivals: Book[];
+    popular: Book[];
+  }>({
+    recommended: [],
+    newArrivals: [],
+    popular: []
+  });
+  
+  // Состояния для поиска
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Загрузка книг из базы данных
+  useEffect(() => {
+    async function fetchBooks() {
+      try {
+        setIsLoading(true);
+        
+        const response = await fetch('/api/books');
+        const books = await response.json();
+        
+        // Форматируем книги
+        const formattedBooks: Book[] = books.map((book: any) => ({
+          id: book.id,
+          title: book.title,
+          author: book.author,
+          genres: book.genres,
+          publishedAt: book.publishedAt,
+          annotation: book.annotation,
+          seriesTitle: book.seriesTitle,
+          seriesNumber: book.seriesNumber,
+          coverUrl: book.coverUrl || '/img/default-book.jpg',
+          createdAt: book.createdAt,
+          rating: book.rating || '0.0',
+          reviewCount: book.reviewCount || 0,
+          href: `/book/${book.id}`
+        }));
+        
+        setAllBooks(formattedBooks);
+        
+        // Разделяем на категории
+        // Новинки - последние добавленные
+        const newArrivals = [...formattedBooks]
+          .filter(book => book.createdAt)
+          .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+          .slice(0, 3);
+        
+        // Популярные - с высоким рейтингом
+        const popular = [...formattedBooks]
+          .filter(book => parseFloat(book.rating) >= 3.5)
+          .sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating))
+          .slice(0, 3);
+        
+        // Рекомендованные - остальные
+        const recommendedIds = new Set([
+          ...newArrivals.map(b => b.id),
+          ...popular.map(b => b.id)
+        ]);
+        
+        const recommended = formattedBooks
+          .filter(book => !recommendedIds.has(book.id))
+          .slice(0, 5);
+        
+        setBookData({
+          recommended,
+          newArrivals,
+          popular
+        });
+      } catch (error) {
+        console.error('Ошибка при загрузке книг:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchBooks();
+  }, []);
 
   // Эффект для клика вне области поиска
   useEffect(() => {
@@ -146,7 +120,7 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Функции поиска (взято у другого человека)
+  // Функции поиска
   const searchBooks = useCallback((query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -154,14 +128,14 @@ export default function Home() {
     }
     
     const lowerQuery = query.toLowerCase();
-    const results = allBooksForSearch.filter(book => 
+    const results = allBooks.filter(book => 
       book.title.toLowerCase().includes(lowerQuery) ||
       book.author.toLowerCase().includes(lowerQuery) ||
       (book.genres && book.genres.toLowerCase().includes(lowerQuery))
     );
     
     setSearchResults(results.slice(0, 10));
-  }, []);
+  }, [allBooks]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -212,7 +186,7 @@ export default function Home() {
           />
         </div>
         
-        {/* Контейнер поиска (взято у другого человека) */}
+        {/* Контейнер поиска */}
         <div className={styles.searchWrapper} ref={searchRef}>
           <div className={styles.searchContainer}>
             <input
@@ -259,7 +233,7 @@ export default function Home() {
                       onClick={() => handleResultClick(book)}
                     >
                       <Image
-                        src={book.imageUrl || '/img/default-book.jpg'}
+                        src={book.coverUrl}
                         alt={book.title}
                         width={40}
                         height={60}
@@ -273,6 +247,9 @@ export default function Home() {
                             {book.genres}
                           </p>
                         )}
+                        <p className={styles.searchResultAuthor} style={{ fontSize: '11px', color: '#FE7C96' }}>
+                          ★ {book.rating} {book.reviewCount ? `(${book.reviewCount})` : ''}
+                        </p>
                       </div>
                     </div>
                   ))
@@ -288,59 +265,89 @@ export default function Home() {
           <h2>ПОДОБРАНО СПЕЦИАЛЬНО ДЛЯ ВАС</h2>
         </div>
 
-        {/* Рекомендованные книги */}
-        <div className={styles.special}>
-          <h2>По вашим предпочтениям</h2>
-          <div className={styles.popularDestinations}>
-            {bookData.recommended.map((book) => (
-              <BookCard
-                key={book.id}
-                id={book.id} 
-                title={book.title}
-                author={book.author}
-                rating={book.rating}
-                imageUrl={book.imageUrl}
-                href={book.href}
-              />
-            ))}
+        {isLoading ? (
+          <div className={styles.special}>
+            <h2>Загрузка книг...</h2>
+            <p style={{ textAlign: 'center', color: '#666' }}>Пожалуйста, подождите</p>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Рекомендованные книги */}
+            {bookData.recommended.length > 0 && (
+              <div className={styles.special}>
+                <h2>По вашим предпочтениям</h2>
+                <div className={styles.popularDestinations}>
+                  {bookData.recommended.map((book) => (
+                    <BookCard
+                      key={book.id}
+                      id={book.id} 
+                      title={book.title}
+                      author={book.author}
+                      rating={book.rating}
+                      imageUrl={book.coverUrl}
+                      href={book.href}
+                      reviewCount={book.reviewCount}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* Новинки */}
-        <div className={styles.special}>
-          <h2>Новинки</h2>
-          <div className={styles.popularDestinations}>
-            {bookData.newArrivals.map((book) => (
-              <BookCard
-                key={book.id}
-                id={book.id} 
-                title={book.title}
-                author={book.author}
-                rating={book.rating}
-                imageUrl={book.imageUrl}
-                href={book.href}
-              />
-            ))}
-          </div>
-        </div>
+            {/* Новинки */}
+            {bookData.newArrivals.length > 0 && (
+              <div className={styles.special}>
+                <h2>Новинки</h2>
+                <div className={styles.popularDestinations}>
+                  {bookData.newArrivals.map((book) => (
+                    <BookCard
+                      key={book.id}
+                      id={book.id} 
+                      title={book.title}
+                      author={book.author}
+                      rating={book.rating}
+                      imageUrl={book.coverUrl}
+                      href={book.href}
+                      reviewCount={book.reviewCount}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* Популярные */}
-        <div className={styles.special}>
-          <h2>Популярные</h2>
-          <div className={styles.popularDestinations}>
-            {bookData.popular.map((book) => (
-              <BookCard
-                key={book.id}
-                id={book.id} 
-                title={book.title}
-                author={book.author}
-                rating={book.rating}
-                imageUrl={book.imageUrl}
-                href={book.href}
-              />
-            ))}
-          </div>
-        </div>
+            {/* Популярные */}
+            {bookData.popular.length > 0 && (
+              <div className={styles.special}>
+                <h2>Популярные</h2>
+                <div className={styles.popularDestinations}>
+                  {bookData.popular.map((book) => (
+                    <BookCard
+                      key={book.id}
+                      id={book.id} 
+                      title={book.title}
+                      author={book.author}
+                      rating={book.rating}
+                      imageUrl={book.coverUrl}
+                      href={book.href}
+                      reviewCount={book.reviewCount}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Если нет книг */}
+            {!bookData.recommended.length && 
+             !bookData.newArrivals.length && 
+             !bookData.popular.length && (
+              <div className={styles.special}>
+                <h2>В библиотеке пока нет книг</h2>
+                <p style={{ textAlign: 'center', color: '#666' }}>
+                  Добавьте книги в базу данных
+                </p>
+              </div>
+            )}
+          </>
+        )}
       </main>
 
       <BottomNav />

@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "next lint",
+    "import-books": "node scripts/add-books.js",
+    "show-books": "node scripts/add-books.js --show",
+    "clear-books": "node scripts/add-books.js --clear",
+    "reset-books": "node scripts/add-books.js --reset"
   },
   "dependencies": {
     "better-sqlite3": "^12.5.0",

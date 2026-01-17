@@ -11,6 +11,7 @@ interface BookCardProps {
   rating: string;
   imageUrl: string;
   href: string;
+  reviewCount?: number; // добавили новое свойство
 }
 
 export default function BookCard({
@@ -19,7 +20,8 @@ export default function BookCard({
   author,
   rating,
   imageUrl,
-  href
+  href,
+  reviewCount
 }: BookCardProps) {
   return (
     <Link href={href} className={styles.bookCardLink}>
@@ -28,7 +30,7 @@ export default function BookCard({
           <Image
             src={imageUrl}
             alt={title}
-            width={120}
+            width={140} // обновите размеры если нужно
             height={180}
             className={styles.bookImage}
             priority
@@ -39,7 +41,7 @@ export default function BookCard({
           <p className={styles.author}>{author}</p>
           <div className={styles.rating}>
             <span className={styles.star}>★</span>
-            <span>{rating}</span>
+            <span>{rating} {reviewCount ? `(${reviewCount})` : ''}</span>
           </div>
         </div>
       </div>

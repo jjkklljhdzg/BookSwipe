@@ -4,15 +4,25 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import styles from './SwipeCard.module.css';
 
+// Поддерживаем оба формата
 interface Book {
   id: number;
   title: string;
   author: string;
   genres: string;
   annotation: string;
+
+  // Поддерживаем оба варианта написания
   series_title?: string;
+  seriesTitle?: string;
+
   series_number?: string;
-  cover_url: string;
+  seriesNumber?: number | string;
+
+  cover_url?: string;
+  coverUrl?: string;
+
+  rating?: string;
 }
 
 interface SwipeCardProps {
@@ -28,18 +38,27 @@ export default function SwipeCard({ book, onSwipe, isActive }: SwipeCardProps) {
   const [rotation, setRotation] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
   const [needsExpandButton, setNeedsExpandButton] = useState(false);
-  
+
   const cardRef = useRef<HTMLDivElement>(null);
   const descriptionRef = useRef<HTMLDivElement>(null);
-  
+
   const SWIPE_THRESHOLD = 80;
   const VERTICAL_LIMIT = 30;
   const HORIZONTAL_LIMIT = 100;
   const ROTATION_FACTOR = 0.1;
 
-  // Простая проверка необходимости кнопки "Читать далее" (упрощаем)
+  // Используем вспомогательные геттеры для совместимости
+  const getCoverUrl = () => book.cover_url || book.coverUrl || '/img/default-book.jpg';
+  const getSeriesTitle = () => book.series_title || book.seriesTitle;
+  const getSeriesNumber = () => {
+    if (book.series_number !== undefined) return book.series_number;
+    if (book.seriesNumber !== undefined) return book.seriesNumber.toString();
+    return undefined;
+  };
+
+  // Простая проверка необходимости кнопки "Читать далее"
   useEffect(() => {
-    if (book.annotation && book.annotation.length > 150) {
+    if (book.annotation && book.annotation.length > 110) {
       setNeedsExpandButton(true);
     } else {
       setNeedsExpandButton(false);
@@ -49,11 +68,11 @@ export default function SwipeCard({ book, onSwipe, isActive }: SwipeCardProps) {
   // Обработчик начала перетаскивания
   const handleStart = useCallback((clientX: number, clientY: number) => {
     if (!isActive) return;
-    
+
     setIsDragging(true);
-    setStartPos({ 
-      x: clientX - position.x, 
-      y: clientY - position.y 
+    setStartPos({
+      x: clientX - position.x,
+      y: clientY - position.y
     });
   }, [isActive, position.x, position.y]);
 
@@ -75,7 +94,7 @@ export default function SwipeCard({ book, onSwipe, isActive }: SwipeCardProps) {
     const deltaY = clientY - startPos.y;
     const limitedY = Math.max(-VERTICAL_LIMIT, Math.min(deltaY, VERTICAL_LIMIT));
     const rotate = limitedX * ROTATION_FACTOR;
-    
+
     setPosition({ x: limitedX, y: limitedY });
     setRotation(rotate);
   }, [isDragging, isActive, startPos.x, startPos.y]);
@@ -93,19 +112,19 @@ export default function SwipeCard({ book, onSwipe, isActive }: SwipeCardProps) {
   // Обработчик окончания перетаскивания
   const handleEnd = useCallback(() => {
     if (!isDragging || !isActive) return;
-    
+
     setIsDragging(false);
-    
+
     const shouldSwipe = Math.abs(position.x) > SWIPE_THRESHOLD;
-    
+
     if (shouldSwipe) {
       const direction = position.x > 0 ? 'right' : 'left';
       const exitX = position.x > 0 ? 500 : -500;
       const exitY = position.y * 2;
-      
+
       setPosition({ x: exitX, y: exitY });
       setRotation(rotation * 1.5);
-      
+
       setTimeout(() => {
         onSwipe(direction);
       }, 150);
@@ -135,7 +154,7 @@ export default function SwipeCard({ book, onSwipe, isActive }: SwipeCardProps) {
       window.addEventListener('mouseup', handleMouseEnd);
       window.addEventListener('touchmove', handleTouchMove, { passive: true });
       window.addEventListener('touchend', handleTouchEnd);
-      
+
       return () => {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseEnd);
@@ -156,9 +175,9 @@ export default function SwipeCard({ book, onSwipe, isActive }: SwipeCardProps) {
       }
     };
 
-    card.addEventListener('touchmove', preventTouchScroll, { 
+    card.addEventListener('touchmove', preventTouchScroll, {
       passive: false,
-      capture: true 
+      capture: true
     });
 
     return () => {
@@ -194,19 +213,19 @@ export default function SwipeCard({ book, onSwipe, isActive }: SwipeCardProps) {
       <div className={styles.cardHeader}>
         <div className={styles.titleRow}>
           <h2 className={styles.title}>{book.title}</h2>
-          <span className={styles.rating}>⭐ 0.00</span>
+          <span className={styles.rating}>⭐ {book.rating || '0.00'}</span>
         </div>
-        
-        {book.series_title && (
+
+        {getSeriesTitle() && (
           <p className={styles.series}>
-            {book.series_title} {book.series_number && `#${book.series_number}`}
+            {getSeriesTitle()} {getSeriesNumber() && `#${getSeriesNumber()}`}
           </p>
         )}
-        
+
         <p className={styles.author}>{book.author}</p>
-        
+
         <div className={styles.tags}>
-          {book.genres.split(',').slice(0, 3).map((genre, i) => (
+          {book.genres?.split(',').slice(0, 3).map((genre, i) => (
             <span key={i} className={styles.tag}>{genre.trim()}</span>
           ))}
         </div>
@@ -214,7 +233,7 @@ export default function SwipeCard({ book, onSwipe, isActive }: SwipeCardProps) {
 
       <div className={styles.coverContainer}>
         <Image
-          src={book.cover_url}
+          src={getCoverUrl()}
           alt={book.title}
           width={200}
           height={300}
@@ -227,9 +246,9 @@ export default function SwipeCard({ book, onSwipe, isActive }: SwipeCardProps) {
         <p className={isExpanded ? styles.expandedText : ''}>
           {book.annotation}
         </p>
-        
+
         {needsExpandButton && (
-          <button 
+          <button
             onClick={toggleExpand}
             className={styles.readMore}
             type="button"
