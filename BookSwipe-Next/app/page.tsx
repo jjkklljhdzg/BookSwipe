@@ -81,13 +81,13 @@ export default function Home() {
         const newArrivals = [...formattedBooks]
           .filter(book => book.createdAt)
           .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
-          .slice(0, 3);
+          .slice(0, 8);
         
         // Популярные - с высоким рейтингом
         const popular = [...formattedBooks]
           .filter(book => parseFloat(book.rating) >= 3.5)
           .sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating))
-          .slice(0, 3);
+          .slice(0, 8);
         
         // Рекомендованные - остальные
         const recommendedIds = new Set([
@@ -97,7 +97,7 @@ export default function Home() {
         
         const recommended = formattedBooks
           .filter(book => !recommendedIds.has(book.id))
-          .slice(0, 5);
+          .slice(0, 8);
         
         setBookData({
           recommended,
@@ -205,7 +205,7 @@ export default function Home() {
             />
             <button className={styles.searchButton} aria-label="Search">
               <Image
-                src="/img/saerch.png"
+                src="/img/saerch.svg"
                 alt="Поиск"
                 width={20}
                 height={20}
