@@ -5,6 +5,7 @@ import styles from "./profile.module.css";
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import BookCard from '@/components/BookCard/BookCard';
+import Notification from '@/components/Notification/Notification'; // Добавляем импорт
 
 // Тип для коллекции пользователя
 interface UserCollectionItem {
@@ -56,6 +57,12 @@ export default function ProfilePage() {
     });
     const [showThemeDropdown, setShowThemeDropdown] = useState(false);
     const [activeTab, setActiveTab] = useState<'reading' | 'planned' | 'abandoned' | 'read' | 'favorite'>('reading');
+    
+    // Добавляем состояние для уведомлений
+    const [notification, setNotification] = useState<{
+        message: string;
+        type: 'success' | 'error' | 'info';
+    } | null>(null);
 
     // Состояния для коллекции и отзывов
     const [userCollection, setUserCollection] = useState<UserCollectionItem[]>([]);
@@ -63,6 +70,15 @@ export default function ProfilePage() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const themeDropdownRef = useRef<HTMLDivElement>(null);
+
+    // Функции для уведомлений
+    const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+        setNotification({ message, type });
+    };
+
+    const hideNotification = () => {
+        setNotification(null);
+    };
 
     // Загружаем сохраненные данные из localStorage при монтировании
     useEffect(() => {
@@ -144,6 +160,8 @@ export default function ProfilePage() {
                 const newAvatar = e.target?.result as string;
                 setUserData(prev => ({ ...prev, avatar: newAvatar }));
                 localStorage.setItem('userAvatar', newAvatar);
+                // Добавляем уведомление для аватара
+                showNotification('Аватар успешно обновлен!');
             };
             reader.readAsDataURL(file);
         }
@@ -158,6 +176,8 @@ export default function ProfilePage() {
     const handleThemeSelect = (themeName: string) => {
         setUserData(prev => ({ ...prev, theme: themeName }));
         setShowThemeDropdown(false);
+        // Добавляем уведомление при смене темы
+        showNotification(`Тема "${themeName}" применена!`);
     };
 
     const handleSave = (e: React.FormEvent) => {
@@ -169,7 +189,8 @@ export default function ProfilePage() {
         localStorage.setItem('userDateOfBirth', userData.dateOfBirth);
         localStorage.setItem('userTheme', userData.theme);
 
-        alert('Профиль успешно обновлен!');
+        // Заменяем alert на кастомное уведомление
+        showNotification('Профиль успешно обновлен!');
         setIsEditing(false);
     };
 
@@ -193,6 +214,15 @@ export default function ProfilePage() {
     if (isEditing) {
         return (
             <div className={styles.container}>
+                {/* Добавляем уведомление в режим редактирования */}
+                {notification && (
+                    <Notification
+                        message={notification.message}
+                        type={notification.type}
+                        onClose={hideNotification}
+                    />
+                )}
+
                 {/* Верхняя панель редактирования */}
                 <div className={styles.topBar}>
                     <span className={styles.backArrow}>
@@ -351,6 +381,14 @@ export default function ProfilePage() {
 
     return (
         <div className={styles.container}>
+            {/* Добавляем уведомление в основной режим */}
+            {notification && (
+                <Notification
+                    message={notification.message}
+                    type={notification.type}
+                    onClose={hideNotification}
+                />
+            )}
 
             {/* Верхняя панель */}
             <div className={styles.topBar}>
