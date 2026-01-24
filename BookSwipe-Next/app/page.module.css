@@ -9,8 +9,8 @@
 }
 
 .logo img {
-  width: 150px;
-  height: 150px;
+  width: 70px;
+  height: 70px;
   /* margin-bottom: 40px;*/
 }
 
@@ -62,4 +62,5 @@
 .loginButton:hover {
   background-color: #A24557;
   color: white;
+
 }
