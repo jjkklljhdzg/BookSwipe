@@ -9,8 +9,8 @@
 }
 
 .logo img {
-  width: 150px;
-  height: 150px;
+  width: 50px;
+  height: 50px;
   /* margin-bottom: 40px;*/
 }
 
@@ -22,16 +22,45 @@
   width: 150px;
 }
 
-.buttons {
+.form {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
   width: 100%;
-  max-width: 300px;
+  max-width: 320px;
+  margin-bottom: 30px;
 }
 
-.registerButton {
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  color: #f9f9f9;
+  font-weight: 500;
+}
+
+.input {
+  background-color: var(--color-search-bg);
+  color: white;
+  border: none;
+  width: 250px;
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #FE7C96;
+}
+
+.submitButton {
   background-color: #A24557;
   color: white;
   border: none;
@@ -43,7 +72,7 @@
   cursor: pointer;
 }
 
-.registerButton:hover {
+.submitButton:hover {
   background-color: #FE7C96;
 }
 
@@ -60,6 +89,15 @@
 }
 
 .loginButton:hover {
-  background-color: #A24557;
-  color: white;
+  background-color: #FE7C96;
+}
+
+.link {
+  display: flex;
+  gap: 8px;
+  color: #f9f9f9;
+}
+
+.link:hover {
+  text-decoration: underline;
 }
