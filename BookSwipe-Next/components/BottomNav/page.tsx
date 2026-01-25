@@ -4,7 +4,7 @@ import styles from './BottomNav.module.css';
 export default function BottomNav() {
   const navItems = [
     { icon: '/img/свайп.png', label: 'Свайп', href: '/Swipe'},
-    { icon: '/img/главная.png', label: 'Главная', href: '/'},
+    { icon: '/img/главная.png', label: 'Главная', href: '/Main'},
     { icon: '/img/профиль.png', label: 'Профиль', href: '/Profile'},
   ];
 
@@ -22,4 +22,5 @@ export default function BottomNav() {
       ))}
     </nav>
   );
+
 }
