@@ -4,15 +4,23 @@ const Database = require('better-sqlite3');
 
 const dbPath = path.join(process.cwd(), 'BookSwipe.db');
 
-export const db = new Database(dbPath, {
-  readonly: true,
-});
+export const db = new Database(dbPath);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    name TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
 // Вспомогательные функции для работы с БД
 export const dbHelpers = {
   getBooks: () => {
     return db.prepare(`
-      SELECT 
+      SELECT
         b.id,
         b.title,
         b.author,
@@ -35,7 +43,7 @@ export const dbHelpers = {
   searchBooks: (query: string) => {
     const searchTerm = `%${query}%`;
     return db.prepare(`
-      SELECT 
+      SELECT
         b.id,
         b.title,
         b.author,
@@ -50,5 +58,27 @@ export const dbHelpers = {
       ORDER BY averageRating DESC
       LIMIT 10
     `).all(searchTerm, searchTerm, searchTerm);
-  }
-};
+  },
+
+  addUser: (email: string, password: string, name?: string) => {
+      try {
+        const stmt = db.prepare(`
+          INSERT INTO users (email, password, name)
+          VALUES (?, ?, ?)
+        `);
+        return stmt.run(email, password, name || '');
+      } catch (error) {
+        console.error('Error adding user:', error);
+        throw error;
+      }
+    },
+
+    getUserByEmail: (email: string) => {
+      const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
+      return stmt.get(email);
+    },
+
+    getAllUsers: () => {
+      return db.prepare('SELECT * FROM users').all();
+    }
+  };

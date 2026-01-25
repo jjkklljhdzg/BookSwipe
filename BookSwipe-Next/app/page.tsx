@@ -7,7 +7,7 @@ export default function HomePage() {
     <div className={styles.container}>
       <div className={styles.logo}>
         <Image
-          src="/img/logo.png"
+          src="/img/logo.svg"
           alt="Логотип"
           width={32}
           height={32}

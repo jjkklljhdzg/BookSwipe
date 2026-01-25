@@ -5,7 +5,8 @@ import styles from "./profile.module.css";
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import BookCard from '@/components/BookCard/BookCard';
-import Notification from '@/components/Notification/Notification'; // Добавляем импорт
+import Notification from '@/components/Notification/Notification';
+import { useRouter } from 'next/navigation';
 
 // Тип для коллекции пользователя
 interface UserCollectionItem {
@@ -36,7 +37,7 @@ interface Comment {
 }
 
 const navItems = [
-    { icon: '/img/back.png', label: 'Свайп', href: '/', active: true },
+    { icon: '/img/back.png', label: 'Свайп', href: '/Main', active: true },
 ];
 
 // Доступные темы
@@ -47,6 +48,7 @@ const availableThemes = [
 ];
 
 export default function ProfilePage() {
+    const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
     const [userData, setUserData] = useState({
         name: 'Имя Фамилия',
@@ -57,7 +59,7 @@ export default function ProfilePage() {
     });
     const [showThemeDropdown, setShowThemeDropdown] = useState(false);
     const [activeTab, setActiveTab] = useState<'reading' | 'planned' | 'abandoned' | 'read' | 'favorite'>('reading');
-    
+
     // Добавляем состояние для уведомлений
     const [notification, setNotification] = useState<{
         message: string;
@@ -67,6 +69,7 @@ export default function ProfilePage() {
     // Состояния для коллекции и отзывов
     const [userCollection, setUserCollection] = useState<UserCollectionItem[]>([]);
     const [userReviews, setUserReviews] = useState<Comment[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const themeDropdownRef = useRef<HTMLDivElement>(null);
@@ -80,29 +83,34 @@ export default function ProfilePage() {
         setNotification(null);
     };
 
-    // Загружаем сохраненные данные из localStorage при монтировании
     useEffect(() => {
-        const savedName = localStorage.getItem('userName');
-        const savedNickname = localStorage.getItem('userNickname');
-        const savedAvatar = localStorage.getItem('userAvatar');
-        const savedDateOfBirth = localStorage.getItem('userDateOfBirth');
-        const savedTheme = localStorage.getItem('userTheme');
+        const checkAuthAndLoadData = () => {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const userEmail = localStorage.getItem('userEmail');
+            const userName = localStorage.getItem('userName');
 
-        setUserData(prev => ({
-            ...prev,
-            name: savedName || prev.name,
-            nickname: savedNickname || prev.nickname,
-            avatar: savedAvatar || prev.avatar,
-            dateOfBirth: savedDateOfBirth || prev.dateOfBirth,
-            theme: savedTheme || prev.theme
-        }));
+            if (!isLoggedIn || !userEmail) {
+                router.push('/Login');
+                return;
+            }
 
-        // Загружаем коллекцию книг
-        loadUserCollection();
+            setUserData(prev => ({
+                ...prev,
+                name: userName || userEmail.split('@')[0] || 'Пользователь',
+                nickname: `@${(userName || userEmail.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`
+            }));
 
-        // Загружаем отзывы пользователя
-        loadUserReviews();
-    }, []);
+            // Загружаем коллекцию книг
+            loadUserCollection();
+
+            // Загружаем отзывы пользователя
+            loadUserReviews();
+
+            setIsLoading(false);
+        };
+
+        checkAuthAndLoadData();
+    }, [router]);
 
     // Загрузка коллекции книг
     const loadUserCollection = () => {
@@ -148,6 +156,24 @@ export default function ProfilePage() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const handleLogout = async () => {
+        try {
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('userName');
+
+            showNotification('Вы успешно вышли из аккаунта');
+
+            setTimeout(() => {
+                router.push('/Login');
+            }, 1000);
+
+        } catch (error) {
+            console.error('Logout error:', error);
+            showNotification('Ошибка при выходе', 'error');
+        }
+    };
+
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
     };
@@ -159,9 +185,14 @@ export default function ProfilePage() {
             reader.onload = (e) => {
                 const newAvatar = e.target?.result as string;
                 setUserData(prev => ({ ...prev, avatar: newAvatar }));
-                localStorage.setItem('userAvatar', newAvatar);
-                // Добавляем уведомление для аватара
-                showNotification('Аватар успешно обновлен!');
+                // Сохраняем в localStorage
+                try {
+                    localStorage.setItem('userAvatar', newAvatar);
+                    showNotification('Аватар успешно обновлен!');
+                } catch (error) {
+                    console.error('Error saving avatar:', error);
+                    showNotification('Ошибка при сохранении аватара', 'error');
+                }
             };
             reader.readAsDataURL(file);
         }
@@ -176,22 +207,35 @@ export default function ProfilePage() {
     const handleThemeSelect = (themeName: string) => {
         setUserData(prev => ({ ...prev, theme: themeName }));
         setShowThemeDropdown(false);
-        // Добавляем уведомление при смене темы
-        showNotification(`Тема "${themeName}" применена!`);
+
+        // Сохраняем тему в localStorage
+        try {
+            localStorage.setItem('userTheme', themeName);
+            showNotification(`Тема "${themeName}" применена!`);
+        } catch (error) {
+            console.error('Error saving theme:', error);
+            showNotification('Ошибка при сохранении темы', 'error');
+        }
     };
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Сохраняем данные в localStorage
-        localStorage.setItem('userName', userData.name);
-        localStorage.setItem('userNickname', userData.nickname);
-        localStorage.setItem('userDateOfBirth', userData.dateOfBirth);
-        localStorage.setItem('userTheme', userData.theme);
+        try {
+            localStorage.setItem('userName', userData.name);
 
-        // Заменяем alert на кастомное уведомление
-        showNotification('Профиль успешно обновлен!');
-        setIsEditing(false);
+            const nickname = `@${userData.name.toLowerCase().replace(/\s+/g, '')}`;
+            localStorage.setItem('userNickname', nickname);
+
+            setUserData(prev => ({ ...prev, nickname }));
+
+            showNotification('Профиль успешно обновлен!');
+            setIsEditing(false);
+
+        } catch (error) {
+            console.error('Save error:', error);
+            showNotification('Ошибка при сохранении профиля', 'error');
+        }
     };
 
     // Фильтрация книг по статусу
@@ -210,6 +254,16 @@ export default function ProfilePage() {
             default: return status;
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className={styles.container}>
+                <div className={styles.loading}>
+                    <p>Загрузка профиля...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (isEditing) {
         return (
@@ -285,18 +339,6 @@ export default function ProfilePage() {
                     </div>
 
                     <div className={styles.formGroup}>
-                        <label htmlFor="nickname">Nickname</label>
-                        <input
-                            type="text"
-                            id="nickname"
-                            value={userData.nickname}
-                            onChange={handleInputChange}
-                            className={styles.formControl}
-                            required
-                        />
-                    </div>
-
-                    <div className={styles.formGroup}>
                         <label htmlFor="dateOfBirth">Дата рождения</label>
                         <input
                             type="text"
@@ -304,7 +346,7 @@ export default function ProfilePage() {
                             value={userData.dateOfBirth}
                             onChange={handleInputChange}
                             className={styles.formControl}
-                            required
+                            placeholder="дд/мм/гггг"
                         />
                     </div>
 
@@ -374,6 +416,9 @@ export default function ProfilePage() {
                     <button type="submit" className={styles.saveButton}>
                         СОХРАНИТЬ
                     </button>
+                    <button className={styles.logoutButton} onClick={handleLogout}>
+                      ВЫЙТИ
+                    </button>
                 </form>
             </div>
         );
@@ -410,18 +455,20 @@ export default function ProfilePage() {
                         </Link>
                     ))}
                 </span>
-                <button
-                    className={styles.settingsButton}
-                    onClick={() => setIsEditing(true)}
-                >
-                    <Image
-                        src="/img/settings.png"
-                        alt="Настройки"
-                        width={30}
-                        height={30}
-                        priority
-                    />
-                </button>
+                <div className={styles.topBarButtons}>
+                    <button
+                        className={styles.settingsButton}
+                        onClick={() => setIsEditing(true)}
+                    >
+                        <Image
+                            src="/img/settings.png"
+                            alt="Настройки"
+                            width={30}
+                            height={30}
+                            priority
+                        />
+                    </button>
+                </div>
             </div>
 
             <div className={styles.avatarBlock}>
@@ -433,7 +480,6 @@ export default function ProfilePage() {
                     <div className={styles.name}>{userData.name}</div>
                     <div className={styles.nickname}>{userData.nickname}</div>
                 </div>
-
             </div>
 
             <div className={styles.sectionTitle}>МОЯ КОЛЛЕКЦИЯ</div>
@@ -514,10 +560,10 @@ export default function ProfilePage() {
                                 </div>
                             </div>
 
-                            <div className={styles.reviewBookInfo}><div>
-                                {review.text}
-                            </div>
-
+                            <div className={styles.reviewBookInfo}>
+                                <div>
+                                    {review.text}
+                                </div>
                             </div>
 
                             <div className={styles.reviewText}>
@@ -533,7 +579,6 @@ export default function ProfilePage() {
                     <p>Оставьте свой первый отзыв на странице книги!</p>
                 </div>
             )}
-
         </div>
     );
 }

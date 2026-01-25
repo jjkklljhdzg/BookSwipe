@@ -295,7 +295,7 @@
   .sectionTitle {
     font-size: 14px;
   }
-  
+
   .special {
     width: calc(100% - 24px);
     margin: 20px 12px 25px 12px;
@@ -314,14 +314,14 @@
     max-width: 640px;
     width: calc(100% - 30px);
   }
-  
+
   /* На мобильных - комментарии вертикально */
   .reviewList {
     flex-direction: column;
     overflow-x: visible;
     gap: 12px;
   }
-  
+
   .reviewCard {
     min-width: 100%;
     max-width: 100%;
@@ -367,7 +367,7 @@
     font-weight: 700;
     margin: 0 0 20px 10px;
   }
-  
+
   /* На планшетах - горизонтальная прокрутка */
   .reviewList {
     overflow-x: auto;
@@ -393,7 +393,7 @@
   .popularDestinations {
     gap: 20px;
   }
-  
+
   /* На десктопах - горизонтальная прокрутка */
   .reviewList {
     overflow-x: auto;
@@ -497,6 +497,22 @@
 
 .saveButton:hover {
   background: #ff8c9d;
+}
+
+.logoutButton {
+  width: 100%;
+  background: #ff3352;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 20px;
+}
+
+.logoutButton:hover {
+  background: #ff3352;
 }
 
 .settingsButton {
@@ -657,7 +673,7 @@
     overflow-x: visible;
     gap: 12px;
   }
-  
+
   .reviewCard {
     min-width: 100%;
     max-width: 100%;
@@ -672,7 +688,7 @@
     overflow-x: auto;
     flex-wrap: nowrap;
   }
-  
+
   .reviewCard {
     min-width: 280px;
     max-width: 350px;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react'; 
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import styles from './main.module.css';
 import BookCard from '@/components/BookCard/BookCard';
@@ -26,7 +26,14 @@ interface Book {
 
 export default function Home() {
   const router = useRouter();
-  
+
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem('isLoggedIn');
+    if (!isLoggedIn) {
+      router.push('/Login');
+    }
+  }, [router]);
+
   // Состояния для книг из базы данных
   const [bookData, setBookData] = useState<{
     recommended: Book[];
@@ -37,14 +44,14 @@ export default function Home() {
     newArrivals: [],
     popular: []
   });
-  
+
   // Состояния для поиска
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -53,10 +60,10 @@ export default function Home() {
     async function fetchBooks() {
       try {
         setIsLoading(true);
-        
+
         const response = await fetch('/api/books');
         const books = await response.json();
-        
+
         // Форматируем книги
         const formattedBooks: Book[] = books.map((book: any) => ({
           id: book.id,
@@ -73,32 +80,32 @@ export default function Home() {
           reviewCount: book.reviewCount || 0,
           href: `/book/${book.id}`
         }));
-        
+
         setAllBooks(formattedBooks);
-        
+
         // Разделяем на категории
         // Новинки - последние добавленные
         const newArrivals = [...formattedBooks]
           .filter(book => book.createdAt)
           .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
           .slice(0, 8);
-        
+
         // Популярные - с высоким рейтингом
         const popular = [...formattedBooks]
           .filter(book => parseFloat(book.rating) >= 3.5)
           .sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating))
           .slice(0, 8);
-        
+
         // Рекомендованные - остальные
         const recommendedIds = new Set([
           ...newArrivals.map(b => b.id),
           ...popular.map(b => b.id)
         ]);
-        
+
         const recommended = formattedBooks
           .filter(book => !recommendedIds.has(book.id))
           .slice(0, 8);
-        
+
         setBookData({
           recommended,
           newArrivals,
@@ -110,7 +117,7 @@ export default function Home() {
         setIsLoading(false);
       }
     }
-    
+
     fetchBooks();
   }, []);
 
@@ -126,14 +133,14 @@ export default function Home() {
       setSearchResults([]);
       return;
     }
-    
+
     const lowerQuery = query.toLowerCase();
-    const results = allBooks.filter(book => 
+    const results = allBooks.filter(book =>
       book.title.toLowerCase().includes(lowerQuery) ||
       book.author.toLowerCase().includes(lowerQuery) ||
       (book.genres && book.genres.toLowerCase().includes(lowerQuery))
     );
-    
+
     setSearchResults(results.slice(0, 10));
   }, [allBooks]);
 
@@ -141,7 +148,7 @@ export default function Home() {
     const value = e.target.value;
     setSearchQuery(value);
     searchBooks(value);
-    
+
     if (value.length > 0) {
       setShowResults(true);
     } else {
@@ -185,7 +192,7 @@ export default function Home() {
             priority
           />
         </div>
-        
+
         {/* Контейнер поиска */}
         <div className={styles.searchWrapper} ref={searchRef}>
           <div className={styles.searchContainer}>
@@ -213,10 +220,10 @@ export default function Home() {
               />
             </button>
           </div>
-          
+
           {showResults && (
             <>
-              <div 
+              <div
                 className={styles.searchOverlay}
                 onClick={() => setShowResults(false)}
               />
@@ -280,7 +287,7 @@ export default function Home() {
                   {bookData.recommended.map((book) => (
                     <BookCard
                       key={book.id}
-                      id={book.id} 
+                      id={book.id}
                       title={book.title}
                       author={book.author}
                       rating={book.rating}
@@ -301,7 +308,7 @@ export default function Home() {
                   {bookData.newArrivals.map((book) => (
                     <BookCard
                       key={book.id}
-                      id={book.id} 
+                      id={book.id}
                       title={book.title}
                       author={book.author}
                       rating={book.rating}
@@ -322,7 +329,7 @@ export default function Home() {
                   {bookData.popular.map((book) => (
                     <BookCard
                       key={book.id}
-                      id={book.id} 
+                      id={book.id}
                       title={book.title}
                       author={book.author}
                       rating={book.rating}
@@ -336,8 +343,8 @@ export default function Home() {
             )}
 
             {/* Если нет книг */}
-            {!bookData.recommended.length && 
-             !bookData.newArrivals.length && 
+            {!bookData.recommended.length &&
+             !bookData.newArrivals.length &&
              !bookData.popular.length && (
               <div className={styles.special}>
                 <h2>В библиотеке пока нет книг</h2>
