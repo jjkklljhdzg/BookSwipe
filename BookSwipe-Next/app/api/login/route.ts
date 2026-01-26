@@ -21,7 +21,8 @@ export async function POST(request: Request) {
       );
     }
 
-    if (user.password !== password) {
+    // Обратите внимание: password_hash, а не password
+    if (user.password_hash !== password) {
       return NextResponse.json(
         { success: false, error: 'Неверный пароль' },
         { status: 401 }
@@ -30,8 +31,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      name: user.name,
-      email: user.email
+      name: user.nickname, // nickname, а не name
+      email: user.email,
+      avatar: user.avatar_url // avatar_url, а не avatar
     });
 
   } catch (error) {

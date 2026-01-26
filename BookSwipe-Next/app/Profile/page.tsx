@@ -89,6 +89,7 @@ export default function ProfilePage() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const userEmail = localStorage.getItem('userEmail');
             const userName = localStorage.getItem('userName');
+            const userAvatar = localStorage.getItem('userAvatar');
 
             if (!isLoggedIn || !userEmail) {
                 router.push('/Login');
@@ -98,7 +99,7 @@ export default function ProfilePage() {
             setUserEmail(userEmail);
 
             try {
-                const response = await fetch('/api/user/profile', {
+                const response = await fetch('/api/user/profile?_=' + Date.now(), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: userEmail })
@@ -106,18 +107,46 @@ export default function ProfilePage() {
 
                 if (response.ok) {
                     const userData = await response.json();
+                    console.log('Profile loaded from DB:', {
+                        nickname: userData.nickname,
+                        avatar_url: userData.avatar_url,
+                        allData: userData
+                    });
+
+                    // ВАЖНО: В ответе от API avatar_url, а не avatar
+                    const avatar = userData.avatar_url ||
+                        userData.avatar ||
+                        userAvatar ||
+                        '/img/ava.jpg';
+
+                    // ВАЖНО: Имя берем из nickname
+                    const nameFromDB = userData.nickname || userData.name;
+
                     setUserData(prev => ({
                         ...prev,
-                        name: userData.name || userName || userEmail.split('@')[0] || 'Пользователь',
-                        nickname: `@${(userData.name || userName || userEmail.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`,
-                        avatar: userData.avatar || '/img/ava.jpg'
+                        name: nameFromDB || userName || userEmail.split('@')[0] || 'Пользователь',
+                        nickname: `@${(nameFromDB || userName || userEmail.split('@')[0] || 'user')
+                            .toLowerCase()
+                            .replace(/\s+/g, '')}`,
+                        avatar: avatar
                     }));
+
+                    // Обновляем localStorage
+                    if (nameFromDB) {
+                        localStorage.setItem('userName', nameFromDB);
+                    }
+                    if (avatar) {
+                        localStorage.setItem('userAvatar', avatar);
+                    }
                 } else {
+                    console.warn('Profile API failed, using localStorage');
                     setUserData(prev => ({
                         ...prev,
                         name: userName || userEmail.split('@')[0] || 'Пользователь',
-                        nickname: `@${(userName || userEmail.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`,
-                        avatar: '/img/ava.jpg'
+                        nickname: `@${(userName || userEmail.split('@')[0] || 'user')
+                            .toLowerCase()
+                            .replace(/\s+/g, '')}`,
+                        avatar: userAvatar || '/img/ava.jpg'
                     }));
                 }
             } catch (error) {
@@ -125,8 +154,10 @@ export default function ProfilePage() {
                 setUserData(prev => ({
                     ...prev,
                     name: userName || userEmail.split('@')[0] || 'Пользователь',
-                    nickname: `@${(userName || userEmail.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`,
-                    avatar: '/img/ava.jpg'
+                    nickname: `@${(userName || userEmail.split('@')[0] || 'user')
+                        .toLowerCase()
+                        .replace(/\s+/g, '')}`,
+                    avatar: userAvatar || '/img/ava.jpg'
                 }));
             }
 
@@ -188,6 +219,7 @@ export default function ProfilePage() {
             localStorage.removeItem('isLoggedIn');
             localStorage.removeItem('userEmail');
             localStorage.removeItem('userName');
+            localStorage.removeItem('userAvatar');
 
             showNotification('Вы успешно вышли из аккаунта');
 
@@ -214,8 +246,10 @@ export default function ProfilePage() {
                 setUserData(prev => ({ ...prev, avatar: newAvatar }));
 
                 try {
+                    // Сохраняем локально
                     localStorage.setItem('userAvatar', newAvatar);
 
+                    // Отправляем на сервер - ТОЛЬКО аватар
                     const response = await fetch('/api/user/avatar', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -225,14 +259,21 @@ export default function ProfilePage() {
                         })
                     });
 
-                    if (response.ok) {
-                        showNotification('Аватар успешно обновлен!');
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        showNotification('Аватар обновлен!');
+                        // Обновляем аватар из ответа сервера
+                        if (data.avatar) {
+                            setUserData(prev => ({ ...prev, avatar: data.avatar }));
+                            localStorage.setItem('userAvatar', data.avatar);
+                        }
                     } else {
-                        showNotification('Аватар сохранен локально', 'info');
+                        showNotification(data.error || 'Ошибка при обновлении аватара', 'error');
                     }
                 } catch (error) {
-                    console.error('Error saving avatar:', error);
-                    showNotification('Аватар сохранен локально', 'info');
+                    console.error('Error:', error);
+                    showNotification('Ошибка сохранения', 'error');
                 }
             };
             reader.readAsDataURL(file);
@@ -263,32 +304,45 @@ export default function ProfilePage() {
         e.preventDefault();
 
         try {
-            // Сохраняем данные в localStorage
+            // 1. Сохраняем имя в localStorage
             localStorage.setItem('userName', userData.name);
 
-            // Обновляем nickname
+            // 2. Обновляем nickname локально
             const nickname = `@${userData.name.toLowerCase().replace(/\s+/g, '')}`;
-            localStorage.setItem('userNickname', nickname);
             setUserData(prev => ({ ...prev, nickname }));
 
-            // Сохраняем в базу данных если есть email
+            // 3. Сохраняем в БД через PUT /api/user/profile
             if (userEmail) {
-                const response = await fetch('/api/user/profile/update', {
-                    method: 'POST',
+                console.log('Saving profile to DB via PUT...');
+
+                const response = await fetch('/api/user/profile', {
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         email: userEmail,
-                        name: userData.name,
-                        avatar: userData.avatar
+                        name: userData.name, // будет сохранено как nickname
+                        avatar: userData.avatar // будет сохранено как avatar_url
                     })
                 });
 
-                if (!response.ok) {
-                    console.warn('Failed to save to DB, using localStorage only');
+                const data = await response.json();
+                console.log('Profile PUT response:', data);
+
+                if (response.ok && data.success) {
+                    showNotification('Профиль успешно обновлен!');
+                    // Обновляем данные из ответа
+                    if (data.name) {
+                        setUserData(prev => ({
+                            ...prev,
+                            name: data.name
+                        }));
+                        localStorage.setItem('userName', data.name);
+                    }
+                } else {
+                    showNotification(data.error || 'Профиль сохранен только локально', 'info');
                 }
             }
 
-            showNotification('Профиль успешно обновлен!');
             setIsEditing(false);
 
         } catch (error) {
@@ -475,8 +529,12 @@ export default function ProfilePage() {
                     <button type="submit" className={styles.saveButton}>
                         СОХРАНИТЬ
                     </button>
-                    <button className={styles.logoutButton} onClick={handleLogout}>
-                      ВЫЙТИ
+                    <button
+                        type="button"
+                        className={styles.logoutButton}
+                        onClick={handleLogout}
+                    >
+                        ВЫЙТИ
                     </button>
                 </form>
             </div>
