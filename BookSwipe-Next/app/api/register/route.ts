@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { dbHelpers } from '@/lib/db'; // Используем dbHelpers
+import { dbHelpers } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       );
     }
 
-    dbHelpers.addUser(email, password, name);
+    dbHelpers.addUser(email, password, name, '/img/ava.jpg');
 
     return NextResponse.json({
       success: true,

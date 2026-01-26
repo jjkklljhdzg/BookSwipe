@@ -49,6 +49,7 @@ const availableThemes = [
 
 export default function ProfilePage() {
     const router = useRouter();
+    const [userEmail, setUserEmail] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [userData, setUserData] = useState({
         name: 'Имя Фамилия',
@@ -84,7 +85,7 @@ export default function ProfilePage() {
     };
 
     useEffect(() => {
-        const checkAuthAndLoadData = () => {
+        const checkAuthAndLoadData = async () => {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const userEmail = localStorage.getItem('userEmail');
             const userName = localStorage.getItem('userName');
@@ -94,16 +95,42 @@ export default function ProfilePage() {
                 return;
             }
 
-            setUserData(prev => ({
-                ...prev,
-                name: userName || userEmail.split('@')[0] || 'Пользователь',
-                nickname: `@${(userName || userEmail.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`
-            }));
+            setUserEmail(userEmail);
 
-            // Загружаем коллекцию книг
+            try {
+                const response = await fetch('/api/user/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: userEmail })
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    setUserData(prev => ({
+                        ...prev,
+                        name: userData.name || userName || userEmail.split('@')[0] || 'Пользователь',
+                        nickname: `@${(userData.name || userName || userEmail.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`,
+                        avatar: userData.avatar || '/img/ava.jpg'
+                    }));
+                } else {
+                    setUserData(prev => ({
+                        ...prev,
+                        name: userName || userEmail.split('@')[0] || 'Пользователь',
+                        nickname: `@${(userName || userEmail.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`,
+                        avatar: '/img/ava.jpg'
+                    }));
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+                setUserData(prev => ({
+                    ...prev,
+                    name: userName || userEmail.split('@')[0] || 'Пользователь',
+                    nickname: `@${(userName || userEmail.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`,
+                    avatar: '/img/ava.jpg'
+                }));
+            }
+
             loadUserCollection();
-
-            // Загружаем отзывы пользователя
             loadUserReviews();
 
             setIsLoading(false);
@@ -178,20 +205,34 @@ export default function ProfilePage() {
         fileInputRef.current?.click();
     };
 
-    const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (file) {
+        if (file && userEmail) {
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 const newAvatar = e.target?.result as string;
                 setUserData(prev => ({ ...prev, avatar: newAvatar }));
-                // Сохраняем в localStorage
+
                 try {
                     localStorage.setItem('userAvatar', newAvatar);
-                    showNotification('Аватар успешно обновлен!');
+
+                    const response = await fetch('/api/user/avatar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: userEmail,
+                            avatar: newAvatar
+                        })
+                    });
+
+                    if (response.ok) {
+                        showNotification('Аватар успешно обновлен!');
+                    } else {
+                        showNotification('Аватар сохранен локально', 'info');
+                    }
                 } catch (error) {
                     console.error('Error saving avatar:', error);
-                    showNotification('Ошибка при сохранении аватара', 'error');
+                    showNotification('Аватар сохранен локально', 'info');
                 }
             };
             reader.readAsDataURL(file);
@@ -218,16 +259,34 @@ export default function ProfilePage() {
         }
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
         try {
+            // Сохраняем данные в localStorage
             localStorage.setItem('userName', userData.name);
 
+            // Обновляем nickname
             const nickname = `@${userData.name.toLowerCase().replace(/\s+/g, '')}`;
             localStorage.setItem('userNickname', nickname);
-
             setUserData(prev => ({ ...prev, nickname }));
+
+            // Сохраняем в базу данных если есть email
+            if (userEmail) {
+                const response = await fetch('/api/user/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: userEmail,
+                        name: userData.name,
+                        avatar: userData.avatar
+                    })
+                });
+
+                if (!response.ok) {
+                    console.warn('Failed to save to DB, using localStorage only');
+                }
+            }
 
             showNotification('Профиль успешно обновлен!');
             setIsEditing(false);

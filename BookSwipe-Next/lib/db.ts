@@ -12,6 +12,7 @@ db.exec(`
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     name TEXT,
+    avatar TEXT DEFAULT '/img/ava.jpg',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
@@ -60,25 +61,55 @@ export const dbHelpers = {
     `).all(searchTerm, searchTerm, searchTerm);
   },
 
-  addUser: (email: string, password: string, name?: string) => {
-      try {
-        const stmt = db.prepare(`
-          INSERT INTO users (email, password, name)
-          VALUES (?, ?, ?)
+  addUser: (email: string, password: string, name?: string, avatar?: string) => {
+    const stmt = db.prepare(`
+      INSERT INTO users (email, password, name, avatar)
+      VALUES (?, ?, ?, ?)
+    `);
+    return stmt.run(email, password, name || '', avatar || '/img/ava.jpg');
+  },
+
+  getUserByEmail: (email: string) => {
+    const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
+    return stmt.get(email);
+  },
+
+  updateUserAvatar: (email: string, avatar: string) => {
+    const stmt = db.prepare(`
+      UPDATE users
+      SET avatar = ?
+      WHERE email = ?
+    `);
+    return stmt.run(avatar, email);
+  },
+
+  updateUserProfile: (email: string, data: { name?: string, avatar?: string }) => {
+    const { name, avatar } = data;
+    if (name && avatar) {
+      const stmt = db.prepare(`
+          UPDATE users
+          SET name = ?, avatar = ?
+          WHERE email = ?
         `);
-        return stmt.run(email, password, name || '');
-      } catch (error) {
-        console.error('Error adding user:', error);
-        throw error;
+        return stmt.run(name, avatar, email);
+      } else if (name) {
+        const stmt = db.prepare(`
+          UPDATE users
+          SET name = ?
+          WHERE email = ?
+        `);
+        return stmt.run(name, email);
+      } else if (avatar) {
+        const stmt = db.prepare(`
+          UPDATE users
+          SET avatar = ?
+          WHERE email = ?
+        `);
+        return stmt.run(avatar, email);
       }
-    },
+  },
 
-    getUserByEmail: (email: string) => {
-      const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
-      return stmt.get(email);
-    },
-
-    getAllUsers: () => {
-      return db.prepare('SELECT * FROM users').all();
-    }
-  };
+  getAllUsers: () => {
+    return db.prepare('SELECT * FROM users').all();
+  }
+};
