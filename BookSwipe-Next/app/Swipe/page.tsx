@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import styles from './swipe.module.css'; // Убедитесь, что стили правильные
+import styles from './swipe.module.css';
 import BottomNav from '@/components/BottomNav/page';
 import SwipeCard from '@/components/SwipeCard/SwipeCard';
 import { useRouter } from 'next/navigation';
 
-// Используйте тот же интерфейс что и на главной
 interface Book {
   id: number;
   title: string;
@@ -21,14 +20,108 @@ interface Book {
   rating: string;
 }
 
+async function getUserId(): Promise<number | null> {
+  const userEmail = localStorage.getItem('userEmail');
+  if (!userEmail) {
+    return null;
+  }
+
+  try {
+    const response = await fetch('/api/user/id', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      const userId = data.userId;
+      localStorage.setItem('userId', userId.toString());
+      return userId;
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function saveSwipe(userId: number, bookId: number, action: 'like' | 'dislike') {
+  try {
+    const response = await fetch('/api/swipe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: userId,
+        bookId: bookId,
+        action: action
+      })
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      window.dispatchEvent(new CustomEvent('recommendations-updated', {
+        detail: { 
+          type: 'swipe', 
+          action, 
+          bookId
+        }
+      }));
+      return true;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    return false;
+  }
+}
+
+async function saveToCollection(userId: number, bookId: number, collectionType: string = 'saved') {
+  try {
+    const response = await fetch('/api/collection', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: userId,
+        bookId: bookId,
+        collectionType: collectionType
+      })
+    });
+
+    const data = await response.json();
+    
+    if (response.ok && data.success) {
+      if (collectionType === 'read' || collectionType === 'reading' || collectionType === 'favorite') {
+        window.dispatchEvent(new CustomEvent('recommendations-updated', {
+          detail: { 
+            type: 'collection', 
+            collectionType, 
+            bookId
+          }
+        }));
+      }
+      return true;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    return false;
+  }
+}
+
 export default function SwipePage() {
   const router = useRouter();
   const [books, setBooks] = useState<Book[]>([]);
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<number | null>(null);
 
-  // Состояния для поиска
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -36,10 +129,23 @@ export default function SwipePage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    loadUserId();
     loadBooks();
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  async function loadUserId() {
+    const id = await getUserId();
+    setUserId(id);
+    
+    if (!id) {
+      const savedId = localStorage.getItem('userId');
+      if (savedId) {
+        setUserId(Number(savedId));
+      }
+    }
+  }
 
   async function loadBooks() {
     try {
@@ -47,7 +153,6 @@ export default function SwipePage() {
       const response = await fetch('/api/books');
       const fetchedBooks = await response.json();
 
-      // Преобразуем данные к нужному формату
       const formattedBooks: Book[] = fetchedBooks.map((book: any) => ({
         id: book.id,
         title: book.title,
@@ -65,13 +170,11 @@ export default function SwipePage() {
       setAllBooks(formattedBooks);
       setCurrentIndex(0);
     } catch (error) {
-      console.error('Failed to load books:', error);
     } finally {
       setLoading(false);
     }
   }
 
-  // Функции поиска
   const searchBooks = useCallback((query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -125,21 +228,44 @@ export default function SwipePage() {
   };
 
   const handleSwipe = (direction: 'left' | 'right') => {
-    console.log(`Swiped ${direction} on book: ${books[currentIndex]?.title}`);
-
     if (currentIndex < books.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      // Если книги закончились, перезагружаем
       loadBooks();
     }
   };
 
-  const handleLike = () => {
+  const handleLike = async () => {
+    const currentBook = books[currentIndex];
+    if (!currentBook) return;
+
+    if (userId) {
+      await saveSwipe(userId, currentBook.id, 'like');
+    } else {
+      const newUserId = await getUserId();
+      if (newUserId) {
+        setUserId(newUserId);
+        await saveSwipe(newUserId, currentBook.id, 'like');
+      }
+    }
+
     handleSwipe('right');
   };
 
-  const handleDislike = () => {
+  const handleDislike = async () => {
+    const currentBook = books[currentIndex];
+    if (!currentBook) return;
+
+    if (userId) {
+      await saveSwipe(userId, currentBook.id, 'dislike');
+    } else {
+      const newUserId = await getUserId();
+      if (newUserId) {
+        setUserId(newUserId);
+        await saveSwipe(newUserId, currentBook.id, 'dislike');
+      }
+    }
+
     handleSwipe('left');
   };
 
@@ -153,29 +279,19 @@ export default function SwipePage() {
 
   const handleSave = async () => {
     const currentBook = books[currentIndex];
-    console.log('Saved to collection:', currentBook?.title);
+    if (!currentBook) return;
 
-    // Здесь можно добавить запрос на сохранение в коллекцию
-    try {
-      const response = await fetch('/api/collection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bookId: currentBook.id,
-          collectionType: 'saved'
-        })
-      });
-
-      if (response.ok) {
-        console.log('Book saved to collection');
+    // 🔥 ТОЛЬКО сохранение в базу данных (никакого localStorage!)
+    if (userId) {
+      await saveToCollection(userId, currentBook.id, 'saved');
+    } else {
+      const newUserId = await getUserId();
+      if (newUserId) {
+        setUserId(newUserId);
+        await saveToCollection(newUserId, currentBook.id, 'saved');
       }
-    } catch (error) {
-      console.error('Error saving book:', error);
     }
 
-    // Переходим к следующей книге
     if (currentIndex < books.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
@@ -199,7 +315,6 @@ export default function SwipePage() {
           />
         </div>
 
-        {/* Контейнер поиска */}
         <div className={styles.searchWrapper} ref={searchRef}>
           <div className={styles.searchContainer}>
             <input
@@ -272,7 +387,10 @@ export default function SwipePage() {
 
       <main className={styles.swipeWrapper}>
         {loading ? (
-          <div className={styles.loading}>Загружаем книги...</div>
+          <div className={styles.loading}>
+            <p>Загружаем книги...</p>
+            {!userId && <p style={{ fontSize: '12px', color: '#ff6b6b' }}>Пытаемся получить ID пользователя...</p>}
+          </div>
         ) : books.length === 0 ? (
           <div className={styles.emptyState}>
             <h2>Вы просмотрели все книги!</h2>
@@ -294,10 +412,12 @@ export default function SwipePage() {
                 isActive={true}
               />
             </div>
+
             <button
               className={styles.leftActionBtn}
               onClick={handleDislike}
               aria-label="Dislike"
+              title="Не нравится"
             >
               <Image src="/img/dislike.png" alt="dislike" width={28} height={28} />
             </button>
@@ -306,6 +426,7 @@ export default function SwipePage() {
               className={styles.rightActionBtn}
               onClick={handleLike}
               aria-label="Like"
+              title="Нравится"
             >
               <Image src="/img/like.png" alt="like" width={28} height={28} />
             </button>
@@ -314,6 +435,7 @@ export default function SwipePage() {
               <button
                 className={styles.middleBtn}
                 onClick={handleSkip}
+                title="Пропустить книгу"
               >
                 <Image src="/img/reload.png" alt="skip" width={22} height={22} />
                 <span>Пропустить</span>
@@ -322,6 +444,7 @@ export default function SwipePage() {
               <button
                 className={styles.middleBtn}
                 onClick={handleSave}
+                title="Сохранить в коллекцию"
               >
                 <Image src="/img/collection.png" alt="save" width={22} height={22} />
                 <span>В коллекцию</span>

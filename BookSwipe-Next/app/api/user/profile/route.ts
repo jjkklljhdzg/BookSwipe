@@ -1,9 +1,13 @@
+// api/user/profile/route.ts
 import { NextResponse } from 'next/server';
-import { dbHelpers } from '@/lib/db';
-// Получение профиля (POST метод) - адаптировано
+import { db } from '@/lib/db';
+
+// Получение профиля (POST метод)
 export async function POST(request: Request) {
   try {
+    console.log('=== PROFILE POST API CALLED ===');
     const { email } = await request.json();
+    console.log('Request email:', email);
 
     if (!email) {
       return NextResponse.json(
@@ -12,7 +16,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = dbHelpers.getUserByEmail(email);
+    const stmt = db.prepare('SELECT id, email, nickname, avatar_url FROM User WHERE email = ?');
+    const user = stmt.get(email);
+
+    console.log('User from DB:', user);
 
     if (!user) {
       return NextResponse.json(
@@ -21,18 +28,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Не возвращаем пароль
-    const { password_hash, ...userData } = user;
-
     return NextResponse.json({
       success: true,
-      ...userData,
-      name: userData.nickname, // nickname как name
-      avatar: userData.avatar_url // avatar_url как avatar
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname,
+      name: user.nickname,
+      avatar_url: user.avatar_url,
+      avatar: user.avatar_url
     });
 
   } catch (error) {
-    console.error('Profile error:', error);
+    console.error('Profile POST error:', error);
     return NextResponse.json(
       { success: false, error: 'Ошибка при получении профиля' },
       { status: 500 }
@@ -40,12 +47,13 @@ export async function POST(request: Request) {
   }
 }
 
-// Обновление профиля (PUT метод) - адаптировано из старого кода
+// Обновление профиля (PUT метод)
 export async function PUT(request: Request) {
   try {
+    console.log('=== PROFILE PUT API CALLED ===');
     const { email, name, avatar } = await request.json();
-
-    console.log('PUT /api/user/profile:', { email, name });
+    
+    console.log('PUT request data:', { email, name, avatar });
 
     if (!email) {
       return NextResponse.json(
@@ -54,27 +62,37 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Обновляем профиль в БД - используем старую рабочую логику
-    dbHelpers.updateUserProfile(email, { name, avatar });
-
-    // Получаем обновленные данные пользователя
-    const updatedUser = dbHelpers.getUserByEmail(email);
-
-    if (!updatedUser) {
+    // Проверяем существование пользователя
+    const checkStmt = db.prepare('SELECT id FROM User WHERE email = ?');
+    const existingUser = checkStmt.get(email);
+    
+    if (!existingUser) {
       return NextResponse.json(
         { success: false, error: 'Пользователь не найден' },
         { status: 404 }
       );
     }
 
-    // Не возвращаем пароль
-    const { password_hash, ...userData } = updatedUser;
+    // Обновляем профиль
+    const updateStmt = db.prepare(`
+      UPDATE User 
+      SET nickname = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE email = ?
+    `);
+    
+    const result = updateStmt.run(name, avatar, email);
+    console.log('Update result:', result);
+
+    // Получаем обновленные данные
+    const getStmt = db.prepare('SELECT id, email, nickname, avatar_url FROM User WHERE email = ?');
+    const updatedUser = getStmt.get(email);
 
     return NextResponse.json({
       success: true,
       message: 'Профиль обновлен',
-      name: userData.nickname, // nickname как name
-      avatar: userData.avatar_url // avatar_url как avatar
+      id: updatedUser.id,
+      name: updatedUser.nickname,
+      avatar: updatedUser.avatar_url
     });
 
   } catch (error) {

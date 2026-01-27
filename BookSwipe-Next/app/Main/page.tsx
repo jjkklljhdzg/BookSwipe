@@ -34,7 +34,7 @@ export default function Home() {
     }
   }, [router]);
 
-  // Состояния для книг из базы данных
+  // Состояния для книг
   const [bookData, setBookData] = useState<{
     recommended: Book[];
     newArrivals: Book[];
@@ -55,71 +55,151 @@ export default function Home() {
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Загрузка книг из базы данных
-  useEffect(() => {
-    async function fetchBooks() {
-      try {
-        setIsLoading(true);
+  // Функция для получения userId
+  const getUserId = async (): Promise<number | null> => {
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) return null;
 
-        const response = await fetch('/api/books');
-        const books = await response.json();
-
-        // Форматируем книги
-        const formattedBooks: Book[] = books.map((book: any) => ({
-          id: book.id,
-          title: book.title,
-          author: book.author,
-          genres: book.genres,
-          publishedAt: book.publishedAt,
-          annotation: book.annotation,
-          seriesTitle: book.seriesTitle,
-          seriesNumber: book.seriesNumber,
-          coverUrl: book.coverUrl || '/img/default-book.jpg',
-          createdAt: book.createdAt,
-          rating: book.rating || '0.0',
-          reviewCount: book.reviewCount || 0,
-          href: `/book/${book.id}`
-        }));
-
-        setAllBooks(formattedBooks);
-
-        // Разделяем на категории
-        // Новинки - последние добавленные
-        const newArrivals = [...formattedBooks]
-          .filter(book => book.createdAt)
-          .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
-          .slice(0, 8);
-
-        // Популярные - с высоким рейтингом
-        const popular = [...formattedBooks]
-          .filter(book => parseFloat(book.rating) >= 3.5)
-          .sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating))
-          .slice(0, 8);
-
-        // Рекомендованные - остальные
-        const recommendedIds = new Set([
-          ...newArrivals.map(b => b.id),
-          ...popular.map(b => b.id)
-        ]);
-
-        const recommended = formattedBooks
-          .filter(book => !recommendedIds.has(book.id))
-          .slice(0, 8);
-
-        setBookData({
-          recommended,
-          newArrivals,
-          popular
-        });
-      } catch (error) {
-        console.error('Ошибка при загрузке книг:', error);
-      } finally {
-        setIsLoading(false);
+    try {
+      const response = await fetch('/api/user/id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        return data.userId;
       }
+      return null;
+    } catch (error) {
+      console.error('Error getting user ID:', error);
+      return null;
     }
+  };
 
-    fetchBooks();
+  // Загрузка всех данных
+  const fetchAllData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+
+      // 1. Загружаем все книги
+      const booksResponse = await fetch('/api/books');
+      const books = await booksResponse.json();
+
+      const formattedBooks: Book[] = books.map((book: any) => ({
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        genres: book.genres,
+        publishedAt: book.publishedAt,
+        annotation: book.annotation,
+        seriesTitle: book.seriesTitle,
+        seriesNumber: book.seriesNumber,
+        coverUrl: book.coverUrl || '/img/default-book.jpg',
+        createdAt: book.createdAt,
+        rating: book.rating || '0.0',
+        reviewCount: book.reviewCount || 0,
+        href: `/book/${book.id}`
+      }));
+
+      setAllBooks(formattedBooks);
+
+      // 2. Получаем email пользователя
+      const userEmail = localStorage.getItem('userEmail');
+      
+      // 3. Получаем рекомендации
+      let recommended: Book[] = [];
+      
+      if (userEmail) {
+        try {
+          // Получаем userId
+          const userId = await getUserId();
+          
+          if (userId) {
+            // Запрашиваем рекомендации
+            const recResponse = await fetch(
+              `/api/recommendations?userId=${userId}&limit=8`, 
+              {
+                cache: 'no-store',
+                headers: {
+                  'Cache-Control': 'no-cache'
+                }
+              }
+            );
+            
+            const recData = await recResponse.json();
+            
+            if (recData.success && recData.recommendations?.length > 0) {
+              // Создаем Map для поиска книг
+              const bookMap = new Map(formattedBooks.map(book => [book.id, book]));
+              
+              // Получаем рекомендованные книги
+              recommended = recData.recommendations
+                .map((id: number) => bookMap.get(id))
+                .filter((book: Book | undefined): book is Book => book !== undefined)
+                .slice(0, 8);
+            }
+          }
+        } catch (recError) {
+          console.error('Error getting recommendations:', recError);
+        }
+      }
+
+      // 4. Разделяем на категории
+      // Новинки
+      const newArrivals = [...formattedBooks]
+        .filter(book => book.createdAt)
+        .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+        .slice(0, 8);
+
+      // Популярные
+      const popular = [...formattedBooks]
+        .filter(book => parseFloat(book.rating) >= 3.5)
+        .sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating))
+        .slice(0, 8);
+
+      // Если нет рекомендаций, показываем случайные
+      if (recommended.length === 0) {
+        const usedIds = new Set([...newArrivals.map(b => b.id), ...popular.map(b => b.id)]);
+        recommended = formattedBooks
+          .filter(book => !usedIds.has(book.id))
+          .slice(0, 8);
+      }
+
+      setBookData({
+        recommended,
+        newArrivals,
+        popular
+      });
+
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Первоначальная загрузка и подписка на события
+  useEffect(() => {
+    fetchAllData();
+    
+    // Слушаем события обновления рекомендаций
+    const handleRecommendationUpdate = () => {
+      console.log('🔄 Обновляем рекомендации по событию');
+      
+      // Небольшая задержка, чтобы дать время БД обновиться
+      setTimeout(() => {
+        fetchAllData();
+      }, 500);
+    };
+    
+    window.addEventListener('recommendations-updated', handleRecommendationUpdate);
+    
+    return () => {
+      window.removeEventListener('recommendations-updated', handleRecommendationUpdate);
+    };
+  }, [fetchAllData]);
 
   // Эффект для клика вне области поиска
   useEffect(() => {
@@ -274,15 +354,14 @@ export default function Home() {
 
         {isLoading ? (
           <div className={styles.special}>
-            <h2>Загрузка книг...</h2>
-            <p style={{ textAlign: 'center', color: '#666' }}>Пожалуйста, подождите</p>
+            <h2>Загрузка рекомендаций...</h2>
           </div>
         ) : (
           <>
             {/* Рекомендованные книги */}
             {bookData.recommended.length > 0 && (
               <div className={styles.special}>
-                <h2>По вашим предпочтениям</h2>
+                <h2 style={{ color: '#FE7C96' }}>По вашим предпочтениям</h2>
                 <div className={styles.popularDestinations}>
                   {bookData.recommended.map((book) => (
                     <BookCard
@@ -342,15 +421,37 @@ export default function Home() {
               </div>
             )}
 
-            {/* Если нет книг */}
-            {!bookData.recommended.length &&
-             !bookData.newArrivals.length &&
-             !bookData.popular.length && (
+            {/* Если нет рекомендаций */}
+            {bookData.recommended.length === 0 && 
+             (bookData.newArrivals.length > 0 || bookData.popular.length > 0) && (
               <div className={styles.special}>
-                <h2>В библиотеке пока нет книг</h2>
-                <p style={{ textAlign: 'center', color: '#666' }}>
-                  Добавьте книги в базу данных
-                </p>
+                <h2 style={{ color: '#FE7C96' }}>По вашим предпочтениям</h2>
+                <div style={{ 
+                  textAlign: 'center', 
+                  padding: '2rem',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '12px',
+                  marginTop: '1rem'
+                }}>
+                  <p style={{ color: '#666', marginBottom: '1rem' }}>
+                    Оцените несколько книг или добавьте их в прочитанное, 
+                    чтобы получить персональные рекомендации
+                  </p>
+                  <button 
+                    onClick={() => router.push('/swipe')}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      backgroundColor: '#FE7C96',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    📚 Начать свайпить книги
+                  </button>
+                </div>
               </div>
             )}
           </>

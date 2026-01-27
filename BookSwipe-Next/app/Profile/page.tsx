@@ -1,27 +1,26 @@
+// profile/page.tsx
 'use client';
 
 import Image from "next/image";
 import styles from "./profile.module.css";
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import BookCard from '@/components/BookCard/BookCard';
 import Notification from '@/components/Notification/Notification';
 import { useRouter } from 'next/navigation';
 
-// Тип для коллекции пользователя
 interface UserCollectionItem {
     id: number;
     bookId: number;
     title: string;
     author: string;
     coverUrl: string;
-    status: 'reading' | 'planned' | 'abandoned' | 'read' | 'favorite' | 'none';
+    status: 'reading' | 'planned' | 'abandoned' | 'read' | 'favorite';
     addedAt: string;
     genres?: string;
     rating?: string;
 }
 
-// Тип для комментария
 interface Comment {
     id: number;
     bookId: number;
@@ -40,12 +39,64 @@ const navItems = [
     { icon: '/img/back.png', label: 'Свайп', href: '/Main', active: true },
 ];
 
-// Доступные темы
 const availableThemes = [
     { id: 'pink-dawn', name: '«Розовый рассвет»' },
     { id: 'night-sky', name: '«Ночной небосвод»' },
     { id: 'dark-forest', name: '«Тёмный лес со светлячками»' }
 ];
+
+async function getUserId(): Promise<number | null> {
+  const userEmail = localStorage.getItem('userEmail');
+  if (!userEmail) {
+    return null;
+  }
+
+  try {
+    const response = await fetch('/api/user/id', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      const userId = data.userId;
+      localStorage.setItem('userId', userId.toString());
+      return userId;
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function loadUserCollectionFromDB(userId: number): Promise<UserCollectionItem[]> {
+  try {
+    const response = await fetch(`/api/collection/get?userId=${userId}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data.success && data.collection) {
+        return data.collection.map((item: any) => ({
+          id: item.id,
+          bookId: item.book_id,
+          title: item.title,
+          author: item.author,
+          coverUrl: item.cover_url || '/img/default-book.jpg',
+          status: item.collection_type,
+          addedAt: item.created_at,
+          genres: item.genres || '',
+          rating: item.rating || '0.0'
+        }));
+      }
+    }
+    return [];
+  } catch (error) {
+    return [];
+  }
+}
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -61,27 +112,27 @@ export default function ProfilePage() {
     const [showThemeDropdown, setShowThemeDropdown] = useState(false);
     const [activeTab, setActiveTab] = useState<'reading' | 'planned' | 'abandoned' | 'read' | 'favorite'>('reading');
 
-    // Добавляем состояние для уведомлений
     const [notification, setNotification] = useState<{
         message: string;
         type: 'success' | 'error' | 'info';
     } | null>(null);
 
-    // Состояния для коллекции и отзывов
     const [userCollection, setUserCollection] = useState<UserCollectionItem[]>([]);
     const [userReviews, setUserReviews] = useState<Comment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const themeDropdownRef = useRef<HTMLDivElement>(null);
-
-    // Функции для уведомлений
     const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
         setNotification({ message, type });
     };
 
     const hideNotification = () => {
         setNotification(null);
+    };
+
+    // Добавьте эту функцию для обработки изменений в форме
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setUserData(prev => ({ ...prev, [id]: value }));
     };
 
     useEffect(() => {
@@ -99,7 +150,7 @@ export default function ProfilePage() {
             setUserEmail(userEmail);
 
             try {
-                const response = await fetch('/api/user/profile?_=' + Date.now(), {
+                const response = await fetch('/api/user/profile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: userEmail })
@@ -107,19 +158,8 @@ export default function ProfilePage() {
 
                 if (response.ok) {
                     const userData = await response.json();
-                    console.log('Profile loaded from DB:', {
-                        nickname: userData.nickname,
-                        avatar_url: userData.avatar_url,
-                        allData: userData
-                    });
-
-                    // ВАЖНО: В ответе от API avatar_url, а не avatar
-                    const avatar = userData.avatar_url ||
-                        userData.avatar ||
-                        userAvatar ||
-                        '/img/ava.jpg';
-
-                    // ВАЖНО: Имя берем из nickname
+                    
+                    const avatar = userData.avatar_url || userData.avatar || userAvatar || '/img/ava.jpg';
                     const nameFromDB = userData.nickname || userData.name;
 
                     setUserData(prev => ({
@@ -131,7 +171,6 @@ export default function ProfilePage() {
                         avatar: avatar
                     }));
 
-                    // Обновляем localStorage
                     if (nameFromDB) {
                         localStorage.setItem('userName', nameFromDB);
                     }
@@ -139,7 +178,6 @@ export default function ProfilePage() {
                         localStorage.setItem('userAvatar', avatar);
                     }
                 } else {
-                    console.warn('Profile API failed, using localStorage');
                     setUserData(prev => ({
                         ...prev,
                         name: userName || userEmail.split('@')[0] || 'Пользователь',
@@ -150,7 +188,6 @@ export default function ProfilePage() {
                     }));
                 }
             } catch (error) {
-                console.error('Error loading user profile:', error);
                 setUserData(prev => ({
                     ...prev,
                     name: userName || userEmail.split('@')[0] || 'Пользователь',
@@ -161,7 +198,7 @@ export default function ProfilePage() {
                 }));
             }
 
-            loadUserCollection();
+            await loadUserCollection();
             loadUserReviews();
 
             setIsLoading(false);
@@ -170,49 +207,34 @@ export default function ProfilePage() {
         checkAuthAndLoadData();
     }, [router]);
 
-    // Загрузка коллекции книг
-    const loadUserCollection = () => {
-        const savedCollection = localStorage.getItem('userCollection');
-        if (savedCollection) {
-            try {
-                const collection: UserCollectionItem[] = JSON.parse(savedCollection);
-                // Сортируем по дате добавления (новые первые)
-                collection.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
-                setUserCollection(collection);
-            } catch (error) {
-                console.error('Ошибка при загрузке коллекции:', error);
-                setUserCollection([]);
+    const loadUserCollection = async () => {
+        try {
+            const userId = await getUserId();
+            if (!userId) {
+                showNotification('Ошибка: пользователь не найден', 'error');
+                return;
             }
+
+            const collection = await loadUserCollectionFromDB(userId);
+            collection.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
+            setUserCollection(collection);
+        } catch (error) {
+            setUserCollection([]);
         }
     };
 
-    // Загрузка отзывов пользователя
     const loadUserReviews = () => {
         const savedReviews = localStorage.getItem('userReviews');
         if (savedReviews) {
             try {
                 const reviews: Comment[] = JSON.parse(savedReviews);
-                // Сортируем по дате (новые первые)
                 reviews.sort((a, b) => b.id - a.id);
                 setUserReviews(reviews);
             } catch (error) {
-                console.error('Ошибка при загрузке отзывов:', error);
                 setUserReviews([]);
             }
         }
     };
-
-    // Закрытие выпадающего списка при клике вне его
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (themeDropdownRef.current && !themeDropdownRef.current.contains(event.target as Node)) {
-                setShowThemeDropdown(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
 
     const handleLogout = async () => {
         try {
@@ -220,6 +242,7 @@ export default function ProfilePage() {
             localStorage.removeItem('userEmail');
             localStorage.removeItem('userName');
             localStorage.removeItem('userAvatar');
+            localStorage.removeItem('userId');
 
             showNotification('Вы успешно вышли из аккаунта');
 
@@ -228,75 +251,7 @@ export default function ProfilePage() {
             }, 1000);
 
         } catch (error) {
-            console.error('Logout error:', error);
             showNotification('Ошибка при выходе', 'error');
-        }
-    };
-
-    const handleAvatarClick = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file && userEmail) {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const newAvatar = e.target?.result as string;
-                setUserData(prev => ({ ...prev, avatar: newAvatar }));
-
-                try {
-                    // Сохраняем локально
-                    localStorage.setItem('userAvatar', newAvatar);
-
-                    // Отправляем на сервер - ТОЛЬКО аватар
-                    const response = await fetch('/api/user/avatar', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: userEmail,
-                            avatar: newAvatar
-                        })
-                    });
-
-                    const data = await response.json();
-
-                    if (response.ok && data.success) {
-                        showNotification('Аватар обновлен!');
-                        // Обновляем аватар из ответа сервера
-                        if (data.avatar) {
-                            setUserData(prev => ({ ...prev, avatar: data.avatar }));
-                            localStorage.setItem('userAvatar', data.avatar);
-                        }
-                    } else {
-                        showNotification(data.error || 'Ошибка при обновлении аватара', 'error');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    showNotification('Ошибка сохранения', 'error');
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { id, value } = e.target;
-        setUserData(prev => ({ ...prev, [id]: value }));
-    };
-
-    // Обработчик выбора темы
-    const handleThemeSelect = (themeName: string) => {
-        setUserData(prev => ({ ...prev, theme: themeName }));
-        setShowThemeDropdown(false);
-
-        // Сохраняем тему в localStorage
-        try {
-            localStorage.setItem('userTheme', themeName);
-            showNotification(`Тема "${themeName}" применена!`);
-        } catch (error) {
-            console.error('Error saving theme:', error);
-            showNotification('Ошибка при сохранении темы', 'error');
         }
     };
 
@@ -304,33 +259,26 @@ export default function ProfilePage() {
         e.preventDefault();
 
         try {
-            // 1. Сохраняем имя в localStorage
             localStorage.setItem('userName', userData.name);
 
-            // 2. Обновляем nickname локально
             const nickname = `@${userData.name.toLowerCase().replace(/\s+/g, '')}`;
             setUserData(prev => ({ ...prev, nickname }));
 
-            // 3. Сохраняем в БД через PUT /api/user/profile
             if (userEmail) {
-                console.log('Saving profile to DB via PUT...');
-
                 const response = await fetch('/api/user/profile', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         email: userEmail,
-                        name: userData.name, // будет сохранено как nickname
-                        avatar: userData.avatar // будет сохранено как avatar_url
+                        name: userData.name,
+                        avatar: userData.avatar
                     })
                 });
 
                 const data = await response.json();
-                console.log('Profile PUT response:', data);
 
                 if (response.ok && data.success) {
                     showNotification('Профиль успешно обновлен!');
-                    // Обновляем данные из ответа
                     if (data.name) {
                         setUserData(prev => ({
                             ...prev,
@@ -346,17 +294,14 @@ export default function ProfilePage() {
             setIsEditing(false);
 
         } catch (error) {
-            console.error('Save error:', error);
             showNotification('Ошибка при сохранении профиля', 'error');
         }
     };
 
-    // Фильтрация книг по статусу
     const getBooksByStatus = (status: 'reading' | 'planned' | 'abandoned' | 'read' | 'favorite') => {
         return userCollection.filter(book => book.status === status);
     };
 
-    // Получение отображаемого названия для статуса
     const getStatusDisplayName = (status: string) => {
         switch (status) {
             case 'reading': return 'Читаю';
@@ -381,7 +326,6 @@ export default function ProfilePage() {
     if (isEditing) {
         return (
             <div className={styles.container}>
-                {/* Добавляем уведомление в режим редактирования */}
                 {notification && (
                     <Notification
                         message={notification.message}
@@ -390,7 +334,6 @@ export default function ProfilePage() {
                     />
                 )}
 
-                {/* Верхняя панель редактирования */}
                 <div className={styles.topBar}>
                     <span className={styles.backArrow}>
                         <button
@@ -414,30 +357,11 @@ export default function ProfilePage() {
                             className={styles.avatar}
                             style={{ backgroundImage: `url(${userData.avatar})` }}
                         />
-                        <button
-                            className={styles.editAvatarButton}
-                            onClick={handleAvatarClick}
-                        >
-                            <Image
-                                src="/img/editing.png"
-                                alt="Изменить аватар"
-                                width={30}
-                                height={30}
-                            />
-                        </button>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleAvatarChange}
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                        />
                     </div>
                     <div className={styles.name}>{userData.name}</div>
                     <div className={styles.nickname}>{userData.nickname}</div>
                 </div>
 
-                {/* Форма редактирования */}
                 <form onSubmit={handleSave} className={styles.editForm}>
                     <div className={styles.formGroup}>
                         <label htmlFor="name">Имя</label>
@@ -465,7 +389,7 @@ export default function ProfilePage() {
 
                     <div className={styles.formGroup}>
                         <label htmlFor="theme">Смена темы</label>
-                        <div style={{ position: 'relative' }} ref={themeDropdownRef}>
+                        <div style={{ position: 'relative' }}>
                             <div
                                 className={styles.formControl}
                                 style={{
@@ -487,7 +411,6 @@ export default function ProfilePage() {
                                 </span>
                             </div>
 
-                            {/* Выпадающий список тем */}
                             {showThemeDropdown && (
                                 <div style={{
                                     position: 'absolute',
@@ -513,7 +436,10 @@ export default function ProfilePage() {
                                                 justifyContent: 'space-between',
                                                 alignItems: 'center'
                                             }}
-                                            onClick={() => handleThemeSelect(theme.name)}
+                                            onClick={() => {
+                                                setUserData(prev => ({ ...prev, theme: theme.name }));
+                                                setShowThemeDropdown(false);
+                                            }}
                                         >
                                             <span>{theme.name}</span>
                                             {userData.theme === theme.name && (
@@ -543,7 +469,6 @@ export default function ProfilePage() {
 
     return (
         <div className={styles.container}>
-            {/* Добавляем уведомление в основной режим */}
             {notification && (
                 <Notification
                     message={notification.message}
@@ -552,7 +477,6 @@ export default function ProfilePage() {
                 />
             )}
 
-            {/* Верхняя панель */}
             <div className={styles.topBar}>
                 <span className={styles.backArrow}>
                     {navItems.map((item) => (
@@ -639,7 +563,7 @@ export default function ProfilePage() {
                     {getBooksByStatus(activeTab).length > 0 ? (
                         getBooksByStatus(activeTab).map((book) => (
                             <BookCard
-                                key={book.id}
+                                key={`${book.id}-${book.bookId}`}
                                 id={book.bookId}
                                 title={book.title}
                                 author={book.author}
@@ -657,7 +581,6 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            {/* Мои отзывы */}
             <div className={styles.sectionTitle}>МОИ ОТЗЫВЫ</div>
 
             {userReviews.length > 0 ? (

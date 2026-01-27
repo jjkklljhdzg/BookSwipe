@@ -1,3 +1,4 @@
+// Login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -17,6 +18,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      console.log('Logging in with email:', email);
+      
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -24,19 +27,41 @@ export default function LoginPage() {
       });
 
       const data = await res.json();
+      console.log('Login response:', data);
 
       if (data.success) {
-        // Сохраняем в localStorage что пользователь вошел
+        // Сохраняем все данные пользователя
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userEmail', email);
         localStorage.setItem('userName', data.name || email.split('@')[0]);
+        
+        // Сохраняем userId если он есть
+        if (data.userId) {
+          localStorage.setItem('userId', data.userId.toString());
+          console.log('Saved userId:', data.userId);
+        } else {
+          // Если userId нет в ответе, получаем его отдельно
+          console.log('Getting userId from /api/user/id...');
+          const idRes = await fetch('/api/user/id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+          });
+          
+          const idData = await idRes.json();
+          if (idData.success && idData.userId) {
+            localStorage.setItem('userId', idData.userId.toString());
+            console.log('Got userId from API:', idData.userId);
+          }
+        }
 
-        // Идем на главную
+        console.log('Login successful, redirecting to /Main');
         router.push('/Main');
       } else {
         alert(data.error || 'Ошибка входа');
       }
     } catch (error) {
+      console.error('Login error:', error);
       alert('Ошибка сети');
     } finally {
       setLoading(false);
