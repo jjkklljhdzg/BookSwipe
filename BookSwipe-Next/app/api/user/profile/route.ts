@@ -1,47 +1,73 @@
-// api/user/profile/route.ts
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { dbHelpers } from '@/lib/db';
 
-// Получение профиля (POST метод)
-export async function POST(request: Request) {
+// Получение профиля (GET метод)
+export async function GET(request: Request) {
   try {
-    console.log('=== PROFILE POST API CALLED ===');
-    const { email } = await request.json();
-    console.log('Request email:', email);
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get('email');
+
+    console.log('GET /api/user/profile - email:', email);
 
     if (!email) {
       return NextResponse.json(
-        { success: false, error: 'Email обязателен' },
+        { success: false, message: 'Email обязателен' },
         { status: 400 }
       );
     }
 
-    const stmt = db.prepare('SELECT id, email, nickname, avatar_url FROM User WHERE email = ?');
-    const user = stmt.get(email);
-
-    console.log('User from DB:', user);
+    const user = dbHelpers.getUserProfile(email);
+    console.log('GET - Found user:', user);
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Пользователь не найден' },
-        { status: 404 }
-      );
+      // Создаем пользователя если не существует
+      try {
+        const result = dbHelpers.addUser(
+          email,
+          'temp_password_' + Date.now(),
+          email.split('@')[0],
+          '/img/ava.jpg'
+        );
+        
+        const newUser = dbHelpers.getUserProfile(email);
+        console.log('✅ Created new user:', newUser);
+        
+        return NextResponse.json({
+          success: true,
+          user: {
+            id: newUser.id,
+            name: newUser.name || email.split('@')[0],
+            avatar: newUser.avatar || '/img/ava.jpg',
+            email: newUser.email
+          }
+        });
+      } catch (createError) {
+        console.error('Error creating user:', createError);
+        return NextResponse.json(
+          { success: false, message: 'Пользователь не найден' },
+          { status: 404 }
+        );
+      }
     }
 
     return NextResponse.json({
       success: true,
-      id: user.id,
-      email: user.email,
-      nickname: user.nickname,
-      name: user.nickname,
-      avatar_url: user.avatar_url,
-      avatar: user.avatar_url
+      user: {
+        id: user.id, // ✅ ДОБАВЛЕНО ID!
+        name: user.name,
+        avatar: user.avatar,
+        email: user.email
+      }
     });
 
-  } catch (error) {
-    console.error('Profile POST error:', error);
+  } catch (error: any) {
+    console.error('GET Profile error:', error);
     return NextResponse.json(
-      { success: false, error: 'Ошибка при получении профиля' },
+      { 
+        success: false, 
+        message: 'Ошибка при получении профиля',
+        error: error.message 
+      },
       { status: 500 }
     );
   }
@@ -50,55 +76,51 @@ export async function POST(request: Request) {
 // Обновление профиля (PUT метод)
 export async function PUT(request: Request) {
   try {
-    console.log('=== PROFILE PUT API CALLED ===');
     const { email, name, avatar } = await request.json();
-    
-    console.log('PUT request data:', { email, name, avatar });
+
+    console.log('PUT /api/user/profile:', { email, name, hasAvatar: !!avatar });
 
     if (!email) {
       return NextResponse.json(
-        { success: false, error: 'Email обязателен' },
+        { success: false, message: 'Email обязателен' },
         { status: 400 }
       );
     }
 
-    // Проверяем существование пользователя
-    const checkStmt = db.prepare('SELECT id FROM User WHERE email = ?');
-    const existingUser = checkStmt.get(email);
-    
-    if (!existingUser) {
+    // Обновляем профиль в БД
+    const result = dbHelpers.updateUserProfile(email, { name, avatar });
+    console.log('PUT - Update result:', result);
+
+    if (result.changes === 0) {
       return NextResponse.json(
-        { success: false, error: 'Пользователь не найден' },
-        { status: 404 }
+        { success: false, message: 'Данные не изменились или пользователь не найден' },
+        { status: 400 }
       );
     }
 
-    // Обновляем профиль
-    const updateStmt = db.prepare(`
-      UPDATE User 
-      SET nickname = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE email = ?
-    `);
-    
-    const result = updateStmt.run(name, avatar, email);
-    console.log('Update result:', result);
-
-    // Получаем обновленные данные
-    const getStmt = db.prepare('SELECT id, email, nickname, avatar_url FROM User WHERE email = ?');
-    const updatedUser = getStmt.get(email);
+    // Получаем обновленные данные пользователя
+    const updatedUser = dbHelpers.getUserProfile(email);
+    console.log('PUT - Updated user:', updatedUser);
 
     return NextResponse.json({
       success: true,
-      message: 'Профиль обновлен',
-      id: updatedUser.id,
-      name: updatedUser.nickname,
-      avatar: updatedUser.avatar_url
+      message: 'Профиль успешно обновлен',
+      user: {
+        id: updatedUser?.id, // ✅ ДОБАВЛЕНО ID!
+        name: updatedUser?.name,
+        avatar: updatedUser?.avatar,
+        email: updatedUser?.email
+      }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('PUT Profile error:', error);
     return NextResponse.json(
-      { success: false, error: 'Ошибка при обновлении профиля' },
+      { 
+        success: false, 
+        message: 'Ошибка при обновлении профиля',
+        error: error.message 
+      },
       { status: 500 }
     );
   }

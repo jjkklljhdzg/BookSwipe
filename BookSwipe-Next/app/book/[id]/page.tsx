@@ -1,4 +1,3 @@
-// book/[id]/page.tsx
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -91,50 +90,100 @@ const StarRating = ({
 async function getUserId(): Promise<number | null> {
   const userEmail = localStorage.getItem('userEmail');
   if (!userEmail) {
+    console.log('❌ No user email in localStorage');
     return null;
   }
 
+  // Проверяем, может ID уже сохранен в localStorage
+  const cachedUserId = localStorage.getItem('userId');
+  if (cachedUserId) {
+    console.log('✅ Using cached user ID:', cachedUserId);
+    return parseInt(cachedUserId);
+  }
+
   try {
+    console.log('🔄 Getting user ID for email:', userEmail);
+    
+    // Попытка 1: Используем /api/user/id
     const response = await fetch('/api/user/id', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: userEmail })
     });
+
+    console.log('📡 Response status:', response.status);
     
     const data = await response.json();
+    console.log('📊 Response data:', data);
     
-    if (data.success) {
+    if (data.success && data.userId) {
       const userId = data.userId;
+      console.log('✅ Found user ID:', userId);
       localStorage.setItem('userId', userId.toString());
       return userId;
     }
+    
+    // Попытка 2: Используем /api/user/profile как fallback
+    console.log('🔄 Trying fallback: /api/user/profile');
+    const fallbackResponse = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
+    
+    if (fallbackResponse.ok) {
+      const profileData = await fallbackResponse.json();
+      console.log('📊 Fallback response:', profileData);
+      
+      if (profileData.success && profileData.user && profileData.user.id) {
+        const userId = profileData.user.id;
+        console.log('✅ Found user ID from profile:', userId);
+        localStorage.setItem('userId', userId.toString());
+        return userId;
+      }
+    }
+    
+    console.error('❌ User not found in any endpoint');
     return null;
+    
   } catch (error) {
+    console.error('🔥 Error getting user ID:', error);
     return null;
   }
 }
 
 async function saveToCollectionDB(userId: number, bookId: number, status: string): Promise<boolean> {
   try {
+    console.log('💾 Saving to collection DB:', { userId, bookId, status });
+    
     const response = await fetch('/api/collection', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId,
-        bookId,
+        userId: userId,
+        bookId: bookId,
         collectionType: status
       })
     });
 
+    console.log('📡 API Response status:', response.status);
+    
     const data = await response.json();
-    return data.success;
+    console.log('📊 API Response data:', data);
+    
+    if (response.ok && data.success) {
+      console.log('✅ Successfully saved to collection');
+      return true;
+    } else {
+      console.error('❌ Failed to save:', data);
+      return false;
+    }
   } catch (error) {
+    console.error('🔥 Error in saveToCollectionDB:', error);
     return false;
   }
 }
 
 async function removeFromCollectionDB(userId: number, bookId: number): Promise<boolean> {
   try {
+    console.log('🗑️ Removing from collection DB:', { userId, bookId });
+    
     const response = await fetch('/api/collection/remove', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -144,26 +193,40 @@ async function removeFromCollectionDB(userId: number, bookId: number): Promise<b
       })
     });
 
+    console.log('📡 Remove response status:', response.status);
+    
     const data = await response.json();
-    return data.success;
+    console.log('📊 Remove response data:', data);
+    
+    return data.success || false;
   } catch (error) {
+    console.error('🔥 Error in removeFromCollectionDB:', error);
     return false;
   }
 }
 
 async function checkBookStatus(userId: number, bookId: string): Promise<string> {
   try {
+    console.log('🔍 Checking book status:', { userId, bookId });
+    
     const response = await fetch(`/api/collection/check?userId=${userId}&bookId=${bookId}`);
+    
+    console.log('📡 Check status response:', response.status);
     
     if (response.ok) {
       const data = await response.json();
+      console.log('📊 Check status data:', data);
       
       if (data.success && data.inCollection && data.collectionType) {
+        console.log('✅ Book found in collection:', data.collectionType);
         return data.collectionType;
       }
     }
+    
+    console.log('📭 Book not in collection');
     return 'none';
   } catch (error) {
+    console.error('🔥 Error checking book status:', error);
     return 'none';
   }
 }
@@ -204,30 +267,68 @@ export default function BookPage() {
     const [bookStatus, setBookStatus] = useState<'reading' | 'planned' | 'abandoned' | 'read' | 'favorite' | 'none'>('none');
     const [isLoadingStatus, setIsLoadingStatus] = useState(false);
 
+    // Обработчик обновления профиля
+    const handleProfileUpdate = (event: CustomEvent) => {
+        console.log('🔄 Profile updated event received:', event.detail);
+        const { name, avatar } = event.detail;
+        
+        if (name || avatar) {
+            setUserData(prev => ({
+                ...prev,
+                name: name || prev.name,
+                avatar: avatar || prev.avatar
+            }));
+            
+            // Обновляем localStorage
+            if (name) {
+                localStorage.setItem('userName', name);
+                console.log('✅ Updated userName in localStorage:', name);
+            }
+            if (avatar) {
+                localStorage.setItem('userAvatar', avatar);
+                console.log('✅ Updated userAvatar in localStorage');
+            }
+        }
+    };
+
     useEffect(() => {
+        // ВСЕГДА берем СВЕЖИЕ данные из localStorage при загрузке
         const savedName = localStorage.getItem('userName') || 'Имя Фамилия';
         const savedAvatar = localStorage.getItem('userAvatar') || '/img/ava.jpg';
+        const savedUserId = localStorage.getItem('userId') || 'current-user';
+
+        console.log('📋 Loading fresh user data:', {
+            name: savedName,
+            avatar: savedAvatar ? '✅' : '❌',
+            userId: savedUserId
+        });
 
         setUserData({
             name: savedName,
             avatar: savedAvatar,
-            userId: 'current-user'
+            userId: savedUserId
         });
 
         loadBook();
         loadAllBooks();
         loadComments();
 
+        // Слушаем события обновления профиля
+        window.addEventListener('profile-updated', handleProfileUpdate as EventListener);
+
         document.addEventListener('mousedown', handleClickOutside);
         document.addEventListener('mousedown', handleMenuClickOutside);
+        
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             document.removeEventListener('mousedown', handleMenuClickOutside);
+            window.removeEventListener('profile-updated', handleProfileUpdate as EventListener);
         };
     }, [params.id]);
 
     useEffect(() => {
         if (book) {
+            console.log('📚 Book loaded, checking status for:', book.title);
             loadBookStatus();
         }
     }, [book, params.id]);
@@ -246,14 +347,18 @@ export default function BookPage() {
     const loadBookStatus = async () => {
         const bookId = params.id;
         if (!bookId) {
+            console.log('❌ No book ID');
             setBookStatus('none');
             return;
         }
 
         setIsLoadingStatus(true);
         
+        console.log('🔄 Loading book status for book ID:', bookId);
         const userId = await getUserId();
+        
         if (!userId) {
+            console.log('❌ No user ID found');
             setBookStatus('none');
             setIsLoadingStatus(false);
             return;
@@ -261,6 +366,7 @@ export default function BookPage() {
 
         try {
             const status = await checkBookStatus(userId, bookId as string);
+            console.log('📊 Book status result:', status);
             
             if (status === 'reading') setBookStatus('reading');
             else if (status === 'planned') setBookStatus('planned');
@@ -269,6 +375,7 @@ export default function BookPage() {
             else if (status === 'favorite') setBookStatus('favorite');
             else setBookStatus('none');
         } catch (error) {
+            console.error('🔥 Error loading book status:', error);
             setBookStatus('none');
         } finally {
             setIsLoadingStatus(false);
@@ -295,24 +402,37 @@ export default function BookPage() {
 
     const saveToCollection = async (status: 'reading' | 'planned' | 'abandoned' | 'read' | 'favorite') => {
         if (!book) {
+            console.log('❌ No book to save');
             return;
         }
 
+        console.log('💡 Starting save to collection:', {
+            bookId: book.id,
+            bookTitle: book.title,
+            status: status
+        });
+
         try {
             const userId = await getUserId();
+            console.log('👤 Got userId:', userId);
             
             if (!userId) {
                 showNotification('Ошибка: пользователь не найден. Войдите в систему.', 'error');
                 return;
             }
 
+            console.log('📤 Calling saveToCollectionDB...');
             const savedInDB = await saveToCollectionDB(userId, book.id, status);
+            console.log('📥 saveToCollectionDB result:', savedInDB);
             
             if (savedInDB) {
+                console.log('🔄 Reloading book status...');
                 await loadBookStatus();
                 setShowMenu(false);
 
+                // Обновляем другие компоненты
                 window.dispatchEvent(new CustomEvent('recommendations-updated'));
+                window.dispatchEvent(new CustomEvent('collection-updated'));
 
                 const statusMessages = {
                     reading: 'Книга добавлена в "Читаю"',
@@ -327,6 +447,7 @@ export default function BookPage() {
                 showNotification('Не удалось сохранить в коллекцию', 'error');
             }
         } catch (error) {
+            console.error('🔥 Error in saveToCollection:', error);
             showNotification('Произошла ошибка при сохранении', 'error');
         }
     };
@@ -335,6 +456,8 @@ export default function BookPage() {
         if (!book) {
             return;
         }
+
+        console.log('🗑️ Removing book from collection:', book.title);
 
         try {
             const userId = await getUserId();
@@ -350,13 +473,16 @@ export default function BookPage() {
                 setBookStatus('none');
                 setShowMenu(false);
                 
+                // Обновляем другие компоненты
                 window.dispatchEvent(new CustomEvent('recommendations-updated'));
+                window.dispatchEvent(new CustomEvent('collection-updated'));
                 
                 showNotification('Книга удалена из коллекции', 'success');
             } else {
                 showNotification('Не удалось удалить из коллекции', 'error');
             }
         } catch (error) {
+            console.error('🔥 Error removing from collection:', error);
             showNotification('Произошла ошибка при удалении', 'error');
         }
     };
@@ -502,12 +628,23 @@ export default function BookPage() {
         }
 
         try {
+            // ⭐⭐⭐ ВАЖНО: ВСЕГДА берем СВЕЖИЕ данные из localStorage! ⭐⭐⭐
+            const currentUserName = localStorage.getItem('userName') || 'Имя Фамилия';
+            const currentUserAvatar = localStorage.getItem('userAvatar') || '/img/ava.jpg';
+            const currentUserId = localStorage.getItem('userId') || 'current-user';
+
+            console.log('💬 Creating comment with fresh user data:', {
+                name: currentUserName,
+                avatar: currentUserAvatar ? '✅' : '❌',
+                userId: currentUserId
+            });
+
             const newComment: Comment = {
                 id: Date.now(),
                 bookId: book.id,
-                userId: userData.userId,
-                userName: userData.name,
-                userAvatar: userData.avatar,
+                userId: currentUserId,
+                userName: currentUserName,
+                userAvatar: currentUserAvatar, // Свежий аватар из localStorage!
                 rating: userRating,
                 text: commentText.trim(),
                 date: new Date().toLocaleDateString('ru-RU', {
@@ -523,32 +660,36 @@ export default function BookPage() {
             const savedBookComments = localStorage.getItem('bookComments');
             const allBookComments = savedBookComments ? JSON.parse(savedBookComments) : [];
             
+            // Удаляем старый отзыв этого пользователя на эту книгу
             const filteredBookComments = allBookComments.filter(
-                (comment: Comment) => !(comment.bookId === book.id && comment.userId === userData.userId)
+                (comment: Comment) => !(comment.bookId === book.id && comment.userId === currentUserId)
             );
             
             filteredBookComments.unshift(newComment);
             const limitedBookComments = filteredBookComments.slice(0, 1000);
             localStorage.setItem('bookComments', JSON.stringify(limitedBookComments));
 
+            // Сохраняем также в профиль пользователя
             const userReviews = localStorage.getItem('userReviews');
             const reviews = userReviews ? JSON.parse(userReviews) : [];
             
             const filteredUserReviews = reviews.filter(
-                (review: Comment) => !(review.bookId === book.id && review.userId === userData.userId)
+                (review: Comment) => !(review.bookId === book.id && review.userId === currentUserId)
             );
             
             filteredUserReviews.unshift(newComment);
             const limitedUserReviews = filteredUserReviews.slice(0, 100);
             localStorage.setItem('userReviews', JSON.stringify(limitedUserReviews));
 
-            setComments([newComment, ...comments.filter(c => !(c.bookId === book.id && c.userId === userData.userId))]);
+            // Обновляем состояние
+            setComments([newComment, ...comments.filter(c => !(c.bookId === book.id && c.userId === currentUserId))]);
             setCommentText('');
             setUserRating(0);
             setHoverRating(0);
 
             showNotification('Спасибо за ваш отзыв! Отзыв успешно опубликован и сохранен в профиле.');
         } catch (error) {
+            console.error('🔥 Error saving comment:', error);
             showNotification('Произошла ошибка при сохранении отзыва', 'error');
         }
     };
