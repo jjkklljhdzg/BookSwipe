@@ -1,4 +1,4 @@
-// app/api/collection/get/route.ts
+// app/api/collection/get/route.ts - ПРОСТОЙ РАБОЧИЙ ВАРИАНТ
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 

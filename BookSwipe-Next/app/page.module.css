@@ -43,10 +43,6 @@
   cursor: pointer;
 }
 
-.registerButton:hover {
-  background-color: #FE7C96;
-}
-
 .loginButton {
   background-color: #A24557;
   color: white;
@@ -59,8 +55,3 @@
   cursor: pointer;
 }
 
-.loginButton:hover {
-  background-color: #A24557;
-  color: white;
-
-}

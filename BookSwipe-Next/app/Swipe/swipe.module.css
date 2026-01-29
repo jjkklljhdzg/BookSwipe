@@ -1,5 +1,3 @@
-/* swipe.module.css - исправленная версия */
-
 .container {
   background: url('/img/background.png') no-repeat center center;
   background-size: cover;
@@ -574,3 +572,6 @@
     width: 500px;
   }
 }
+
+
+

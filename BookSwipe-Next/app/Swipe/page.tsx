@@ -1,3 +1,4 @@
+// Swipe/page.tsx
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -6,6 +7,7 @@ import styles from './swipe.module.css';
 import BottomNav from '@/components/BottomNav/page';
 import SwipeCard from '@/components/SwipeCard/SwipeCard';
 import { useRouter } from 'next/navigation';
+import Notification from '@/components/Notification/Notification';
 
 interface Book {
   id: number;
@@ -79,38 +81,57 @@ async function saveSwipe(userId: number, bookId: number, action: 'like' | 'disli
   }
 }
 
-async function saveToCollection(userId: number, bookId: number, collectionType: string = 'saved') {
+async function saveToCollectionDB(userId: number, bookId: number, status: string): Promise<boolean> {
   try {
     const response = await fetch('/api/collection', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId: userId,
-        bookId: bookId,
-        collectionType: collectionType
+        userId,
+        bookId,
+        collectionType: status
       })
     });
 
     const data = await response.json();
-    
-    if (response.ok && data.success) {
-      if (collectionType === 'read' || collectionType === 'reading' || collectionType === 'favorite') {
-        window.dispatchEvent(new CustomEvent('recommendations-updated', {
-          detail: { 
-            type: 'collection', 
-            collectionType, 
-            bookId
-          }
-        }));
-      }
-      return true;
-    } else {
-      return false;
-    }
+    return data.success;
   } catch (error) {
     return false;
+  }
+}
+
+async function removeFromCollectionDB(userId: number, bookId: number): Promise<boolean> {
+  try {
+    const response = await fetch('/api/collection/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        bookId
+      })
+    });
+
+    const data = await response.json();
+    return data.success;
+  } catch (error) {
+    return false;
+  }
+}
+
+async function checkBookStatus(userId: number, bookId: number): Promise<string> {
+  try {
+    const response = await fetch(`/api/collection/check?userId=${userId}&bookId=${bookId}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data.success && data.inCollection && data.collectionType) {
+        return data.collectionType;
+      }
+    }
+    return 'none';
+  } catch (error) {
+    return 'none';
   }
 }
 
@@ -128,12 +149,71 @@ export default function SwipePage() {
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Меню коллекции
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const collectionRef = useRef<HTMLButtonElement>(null);
+
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
+
+  const [bookStatus, setBookStatus] = useState<'reading' | 'planned' | 'abandoned' | 'read' | 'favorite' | 'none'>('none');
+  const [isLoadingStatus, setIsLoadingStatus] = useState(false);
+
   useEffect(() => {
     loadUserId();
     loadBooks();
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleMenuClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleMenuClickOutside);
+    };
   }, []);
+
+  useEffect(() => {
+    if (books.length > 0 && currentIndex < books.length) {
+      loadBookStatus();
+    }
+  }, [books, currentIndex]);
+
+  const handleMenuClickOutside = (event: MouseEvent) => {
+    if (
+      menuRef.current &&
+      !menuRef.current.contains(event.target as Node) &&
+      collectionRef.current &&
+      !collectionRef.current.contains(event.target as Node)
+    ) {
+      setShowMenu(false);
+    }
+  };
+
+  const loadBookStatus = async () => {
+    const currentBook = books[currentIndex];
+    if (!currentBook || !userId) {
+      setBookStatus('none');
+      return;
+    }
+
+    setIsLoadingStatus(true);
+    
+    try {
+      const status = await checkBookStatus(userId, currentBook.id);
+      
+      if (status === 'reading') setBookStatus('reading');
+      else if (status === 'planned') setBookStatus('planned');
+      else if (status === 'abandoned') setBookStatus('abandoned');
+      else if (status === 'read') setBookStatus('read');
+      else if (status === 'favorite') setBookStatus('favorite');
+      else setBookStatus('none');
+    } catch (error) {
+      setBookStatus('none');
+    } finally {
+      setIsLoadingStatus(false);
+    }
+  };
 
   async function loadUserId() {
     const id = await getUserId();
@@ -277,26 +357,85 @@ export default function SwipePage() {
     }
   };
 
-  const handleSave = async () => {
+  const saveToCollection = async (status: 'reading' | 'planned' | 'abandoned' | 'read' | 'favorite') => {
     const currentBook = books[currentIndex];
-    if (!currentBook) return;
+    if (!currentBook) {
+      return;
+    }
 
-    // 🔥 ТОЛЬКО сохранение в базу данных (никакого localStorage!)
-    if (userId) {
-      await saveToCollection(userId, currentBook.id, 'saved');
-    } else {
-      const newUserId = await getUserId();
-      if (newUserId) {
-        setUserId(newUserId);
-        await saveToCollection(newUserId, currentBook.id, 'saved');
+    try {
+      const userId = await getUserId();
+      
+      if (!userId) {
+        showNotification('Ошибка: пользователь не найден. Войдите в систему.', 'error');
+        return;
       }
+
+      const savedInDB = await saveToCollectionDB(userId, currentBook.id, status);
+      
+      if (savedInDB) {
+        await loadBookStatus();
+        setShowMenu(false);
+
+        window.dispatchEvent(new CustomEvent('recommendations-updated'));
+
+        const statusMessages = {
+          reading: 'Книга добавлена в "Читаю"',
+          planned: 'Книга добавлена в "В планах"',
+          abandoned: 'Книга добавлена в "Брошенные"',
+          read: 'Книга добавлена в "Прочитанные"',
+          favorite: 'Книга добавлена в "Избранные"'
+        };
+
+        showNotification(statusMessages[status], 'success');
+        
+        // Переход к следующей книге после сохранения
+        handleSkip();
+      } else {
+        showNotification('Не удалось сохранить в коллекцию', 'error');
+      }
+    } catch (error) {
+      showNotification('Произошла ошибка при сохранении', 'error');
+    }
+  };
+
+  const removeFromCollection = async () => {
+    const currentBook = books[currentIndex];
+    if (!currentBook) {
+      return;
     }
 
-    if (currentIndex < books.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      loadBooks();
+    try {
+      const userId = await getUserId();
+      
+      if (!userId) {
+        showNotification('Ошибка: пользователь не найден', 'error');
+        return;
+      }
+
+      const removedFromDB = await removeFromCollectionDB(userId, currentBook.id);
+      
+      if (removedFromDB) {
+        setBookStatus('none');
+        setShowMenu(false);
+        
+        window.dispatchEvent(new CustomEvent('recommendations-updated'));
+        
+        showNotification('Книга удалена из коллекции', 'success');
+      } else {
+        showNotification('Не удалось удалить из коллекции', 'error');
+      }
+    } catch (error) {
+      showNotification('Произошла ошибка при удалении', 'error');
     }
+  };
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setNotification({ message, type });
+  };
+
+  const hideNotification = () => {
+    setNotification(null);
   };
 
   const currentBook = books[currentIndex];
@@ -385,6 +524,14 @@ export default function SwipePage() {
         </div>
       </header>
 
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={hideNotification}
+        />
+      )}
+
       <main className={styles.swipeWrapper}>
         {loading ? (
           <div className={styles.loading}>
@@ -441,14 +588,184 @@ export default function SwipePage() {
                 <span>Пропустить</span>
               </button>
 
-              <button
-                className={styles.middleBtn}
-                onClick={handleSave}
-                title="Сохранить в коллекцию"
-              >
-                <Image src="/img/collection.png" alt="save" width={22} height={22} />
-                <span>В коллекцию</span>
-              </button>
+              <div style={{ position: 'relative' }}>
+                <button
+                  ref={collectionRef}
+                  className={styles.middleBtn}
+                  onClick={() => setShowMenu(!showMenu)}
+                  title="Добавить в коллекцию"
+                  disabled={isLoadingStatus}
+                >
+                  {isLoadingStatus ? (
+                    <span style={{ fontSize: '16px' }}></span>
+                  ) : (
+                    <Image src="/img/collection.png" alt="collection" width={22} height={22} />
+                  )}
+                  <span>В коллекцию</span>
+                </button>
+
+                {showMenu && (
+                  <div
+                    ref={menuRef}
+                    className={styles.collectionMenu}
+                    style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      right: 0,
+                      width: '200px',
+                      backgroundColor: 'white',
+                      border: '1px solid #eee',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      zIndex: 1000,
+                      marginBottom: '10px'
+                    }}
+                  >
+                    <div style={{
+                      padding: '12px 16px',
+                      borderBottom: '1px solid #eee',
+                      fontSize: '12px',
+                      color: '#666'
+                    }}>
+                      Текущий статус: {
+                        bookStatus === 'reading' ? 'Читаю' :
+                          bookStatus === 'planned' ? 'В планах' :
+                            bookStatus === 'abandoned' ? 'Брошенные' :
+                              bookStatus === 'read' ? 'Прочитанные' :
+                                bookStatus === 'favorite' ? 'Избранные' :
+                                  'Не в коллекции'
+                      }
+                    </div>
+
+                    <button
+                      onClick={() => saveToCollection('reading')}
+                      disabled={isLoadingStatus}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: '1px solid #eee',
+                        cursor: isLoadingStatus ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        color: bookStatus === 'reading' ? '#FE7C96' : '#333',
+                        fontWeight: bookStatus === 'reading' ? '600' : '400',
+                        backgroundColor: bookStatus === 'reading' ? '#fff5f7' : 'white',
+                        opacity: isLoadingStatus ? 0.5 : 1
+                      }}
+                    >
+                      Читаю
+                    </button>
+
+                    <button
+                      onClick={() => saveToCollection('planned')}
+                      disabled={isLoadingStatus}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: '1px solid #eee',
+                        cursor: isLoadingStatus ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        color: bookStatus === 'planned' ? '#FE7C96' : '#333',
+                        fontWeight: bookStatus === 'planned' ? '600' : '400',
+                        backgroundColor: bookStatus === 'planned' ? '#fff5f7' : 'white',
+                        opacity: isLoadingStatus ? 0.5 : 1
+                      }}
+                    >
+                      В планах
+                    </button>
+
+                    <button
+                      onClick={() => saveToCollection('abandoned')}
+                      disabled={isLoadingStatus}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: '1px solid #eee',
+                        cursor: isLoadingStatus ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        color: bookStatus === 'abandoned' ? '#FE7C96' : '#333',
+                        fontWeight: bookStatus === 'abandoned' ? '600' : '400',
+                        backgroundColor: bookStatus === 'abandoned' ? '#fff5f7' : 'white',
+                        opacity: isLoadingStatus ? 0.5 : 1
+                      }}
+                    >
+                      Брошенные
+                    </button>
+
+                    <button
+                      onClick={() => saveToCollection('read')}
+                      disabled={isLoadingStatus}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: '1px solid #eee',
+                        cursor: isLoadingStatus ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        color: bookStatus === 'read' ? '#FE7C96' : '#333',
+                        fontWeight: bookStatus === 'read' ? '600' : '400',
+                        backgroundColor: bookStatus === 'read' ? '#fff5f7' : 'white',
+                        opacity: isLoadingStatus ? 0.5 : 1
+                      }}
+                    >
+                      Прочитанные
+                    </button>
+
+                    <button
+                      onClick={() => saveToCollection('favorite')}
+                      disabled={isLoadingStatus}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: '1px solid #eee',
+                        cursor: isLoadingStatus ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        color: bookStatus === 'favorite' ? '#FE7C96' : '#333',
+                        fontWeight: bookStatus === 'favorite' ? '600' : '400',
+                        backgroundColor: bookStatus === 'favorite' ? '#fff5f7' : 'white',
+                        opacity: isLoadingStatus ? 0.5 : 1
+                      }}
+                    >
+                      Избранные
+                    </button>
+
+                    <div style={{ height: '1px', backgroundColor: '#eee', margin: '8px 0' }}></div>
+
+                    {bookStatus !== 'none' && (
+                      <button
+                        onClick={removeFromCollection}
+                        disabled={isLoadingStatus}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          textAlign: 'left',
+                          background: 'none',
+                          border: 'none',
+                          cursor: isLoadingStatus ? 'not-allowed' : 'pointer',
+                          fontSize: '14px',
+                          color: '#ff6b6b',
+                          opacity: isLoadingStatus ? 0.5 : 1
+                        }}
+                      >
+                        Удалить из списка
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ) : null}

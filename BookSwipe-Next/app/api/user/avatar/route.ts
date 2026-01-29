@@ -5,55 +5,42 @@ export async function POST(request: Request) {
   try {
     const { email, avatar } = await request.json();
 
-    console.log('POST /api/user/avatar:', { 
+    console.log('Avatar API called:', { 
       email, 
-      hasAvatar: !!avatar,
       avatarLength: avatar?.length,
-      isDataURL: avatar?.startsWith?.('data:image')
+      avatarStartsWithDataImage: avatar?.startsWith?.('data:image')
     });
 
-    if (!email) {
+    if (!email || !avatar) {
       return NextResponse.json(
-        { success: false, message: 'Email обязателен' },
+        { success: false, error: 'Email и аватар обязательны' },
         { status: 400 }
       );
     }
 
-    if (!avatar) {
-      return NextResponse.json(
-        { success: false, message: 'Аватар обязателен' },
-        { status: 400 }
-      );
-    }
-
-    // Обновляем аватар в базе данных
-    const result = dbHelpers.updateUserAvatar(email, avatar);
-    console.log('Avatar update result:', result);
-
-    if (result.changes === 0) {
-      return NextResponse.json(
-        { success: false, message: 'Пользователь не найден или данные не изменились' },
-        { status: 404 }
-      );
-    }
+    // Обновляем аватар в базе данных - используем старую рабочую логику
+    dbHelpers.updateUserAvatar(email, avatar);
 
     // Получаем обновленного пользователя
-    const updatedUser = dbHelpers.getUserProfile(email);
-    console.log('After update - user:', updatedUser);
+    const updatedUser = dbHelpers.getUserByEmail(email);
+    console.log('After update - user:', {
+      hasAvatar: !!updatedUser?.avatar_url,
+      avatarLength: updatedUser?.avatar_url?.length
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Аватар успешно обновлен',
-      avatar: updatedUser?.avatar
+      message: 'Аватар обновлен',
+      avatar: updatedUser?.avatar_url
     });
 
   } catch (error: any) {
-    console.error('Avatar API error:', error);
+    console.error('Avatar API error:', error.message);
     return NextResponse.json(
       { 
         success: false, 
-        message: 'Ошибка при обновлении аватара',
-        error: error.message
+        error: 'Ошибка при обновлении аватара',
+        details: error.message
       },
       { status: 500 }
     );
