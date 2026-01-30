@@ -1,4 +1,3 @@
-// Login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -6,12 +5,20 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import styles from './login.module.css';
+import Notification from '@/components/Notification/Notification'; // Импортируем компонент
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Добавляем состояние для уведомления
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,20 +63,45 @@ export default function LoginPage() {
         }
 
         console.log('Login successful, redirecting to /Main');
+        showNotification('Вход выполнен успешно!', 'success');
         router.push('/Main');
       } else {
-        alert(data.error || 'Ошибка входа');
+        showNotification(data.error || 'Ошибка входа', 'error');
       }
     } catch (error) {
       console.error('Login error:', error);
-      alert('Ошибка сети');
+      showNotification('Ошибка сети', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  // Функция для показа уведомления
+  const showNotification = (message: string, type: 'success' | 'error' | 'info') => {
+    setNotification({
+      show: true,
+      message,
+      type
+    });
+  };
+
+  // Функция для скрытия уведомления
+  const closeNotification = () => {
+    setNotification(null);
+  };
+
   return (
     <div className={styles.container}>
+      {/* Добавляем компонент Notification */}
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          duration={3000}
+          onClose={closeNotification}
+        />
+      )}
+      
       <div className={styles.logo}>
         <Image
           src="/img/logo.svg"

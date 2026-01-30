@@ -424,28 +424,12 @@
   font-weight: 600;
   color: #FE7C96;
   margin: 0 auto;
-  flex: 1;
-  position: absolute;
-  left: 0;
-  right: 0;
-  text-align: center;
 }
-
 
 .backButton {
   background: none;
   border: none;
-  padding: 20px;
-
-  text-align: center;
-  color: #fe7c96;
-  text-align: center;
-  flex: 1;
-  margin: 0 auto;
-  font-size: 18px;
-  font-weight: 600;
-  position: absolute;
-  left: 0;
+  padding: 8px;
 }
 
 .avatarContainer {

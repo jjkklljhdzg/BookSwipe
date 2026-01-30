@@ -4,16 +4,12 @@ import { db } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Извлекаем ID из URL если params не работает
-    const url = new URL(request.url);
-    const pathParts = url.pathname.split('/');
-    const id = params.id || pathParts[pathParts.length - 1];
+    const { id } = await params;
     
-    console.log('API: Получение книги, ID из params:', params.id);
-    console.log('API: ID из URL:', id);
+    console.log('API: Получение книги, ID из params:', id);
     
     const bookId = parseInt(id);
     
@@ -24,7 +20,6 @@ export async function GET(
       );
     }
 
-    // Получаем информацию о книге
     const book = db
       .prepare(`
         SELECT
@@ -50,7 +45,6 @@ export async function GET(
       );
     }
 
-    // Получаем рейтинг и отзывы
     const ratingData = db
       .prepare(`
         SELECT 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import styles from './register.module.css';
+import Notification from '@/components/Notification/Notification'; // Импортируем компонент
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,12 +14,19 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Добавляем состояние для уведомления
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      alert('Пароли не совпадают');
+      showNotification('Пароли не совпадают', 'error');
       return;
     }
 
@@ -38,20 +46,44 @@ export default function RegisterPage() {
         localStorage.setItem('userEmail', email);
         localStorage.setItem('userName', name || email.split('@')[0]);
 
-        alert('Регистрация успешна!');
+        showNotification('Регистрация успешна!', 'success');
         router.push('/Main');
       } else {
-        alert(data.error || 'Ошибка регистрации');
+        showNotification(data.error || 'Ошибка регистрации', 'error');
       }
     } catch (error) {
-      alert('Ошибка сети');
+      showNotification('Ошибка сети', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  // Функция для показа уведомления
+  const showNotification = (message: string, type: 'success' | 'error' | 'info') => {
+    setNotification({
+      show: true,
+      message,
+      type
+    });
+  };
+
+  // Функция для скрытия уведомления
+  const closeNotification = () => {
+    setNotification(null);
+  };
+
   return (
     <div className={styles.container}>
+      {/* Добавляем компонент Notification */}
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          duration={3000}
+          onClose={closeNotification}
+        />
+      )}
+      
       <div className={styles.logo}>
         <Image
           src="/img/logo.svg"

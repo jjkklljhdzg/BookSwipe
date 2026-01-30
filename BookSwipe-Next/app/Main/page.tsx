@@ -17,17 +17,17 @@ interface Book {
   annotation?: string;
   seriesTitle?: string;
   seriesNumber?: number;
-  coverUrl: string; // URL обложки
-  createdAt?: string; // Дата создания записи
-  rating: string; // Рейтинг (строка)
-  reviewCount?: number; // Количество отзывов
-  href: string; // Ссылка на страницу книги
+  coverUrl: string;
+  createdAt?: string;
+  rating: string;
+  reviewCount?: number;
+  href: string;
 }
 
 export default function Home() {
   const router = useRouter();
 
-  useEffect(() => { // Проверка авторизации пользователя 
+  useEffect(() => {
     const isLoggedIn = localStorage.getItem('isLoggedIn');
     if (!isLoggedIn) {
       router.push('/Login');
@@ -46,14 +46,14 @@ export default function Home() {
   });
 
   // Состояния для поиска
-  const [searchQuery, setSearchQuery] = useState(''); // Текст запроса
-  const [searchResults, setSearchResults] = useState<Book[]>([]); // Результаты поиска
-  const [showResults, setShowResults] = useState(false); // Показать/скрыть результаты
-  const [allBooks, setAllBooks] = useState<Book[]>([]); // Все книги
-  const [isLoading, setIsLoading] = useState(true); // Статус загрузки
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Book[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const searchRef = useRef<HTMLDivElement>(null); // Ссылка на контейнер поиска
-  const inputRef = useRef<HTMLInputElement>(null); // Ссылка на поле ввода
+  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Функция для получения userId
   const getUserId = async (): Promise<number | null> => {
@@ -61,13 +61,13 @@ export default function Home() {
     if (!userEmail) return null;
 
     try {
-      const response = await fetch('/api/user/id', { // Ожидание завершения запроса
+      const response = await fetch('/api/user/id', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, // Тело запроса будет в формате JSON
-        body: JSON.stringify({ email: userEmail }) // Преобразует в строку JSON и отправляет его в теле запроса.
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail })
       });
-
-      const data = await response.json(); // Преобразует ответ сервера из формата JSON в объект JavaScript
+      
+      const data = await response.json();
       if (data.success) {
         return data.userId;
       }
@@ -75,7 +75,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error getting user ID:', error);
       return null;
-    } 
+    }
   };
 
   // Загрузка всех данных
@@ -83,7 +83,7 @@ export default function Home() {
     try {
       setIsLoading(true);
 
-      // Загружаем все книги
+      // 1. Загружаем все книги
       const booksResponse = await fetch('/api/books');
       const books = await booksResponse.json();
 
@@ -98,46 +98,46 @@ export default function Home() {
         seriesNumber: book.seriesNumber,
         coverUrl: book.coverUrl || '/img/default-book.jpg',
         createdAt: book.createdAt,
-        rating: book.rating || '0.0', // Либо рейтинг либо '0.0'
+        rating: book.rating || '0.0',
         reviewCount: book.reviewCount || 0,
         href: `/book/${book.id}`
       }));
 
       setAllBooks(formattedBooks);
 
-      // Получаем email пользователя
+      // 2. Получаем email пользователя
       const userEmail = localStorage.getItem('userEmail');
-
-      // Получаем рекомендации
+      
+      // 3. Получаем рекомендации
       let recommended: Book[] = [];
-
+      
       if (userEmail) {
         try {
           // Получаем userId
           const userId = await getUserId();
-
+          
           if (userId) {
             // Запрашиваем рекомендации
             const recResponse = await fetch(
-              `/api/recommendations?userId=${userId}&limit=8`,
+              `/api/recommendations?userId=${userId}&limit=8`, 
               {
-                cache: 'no-store', // Отключает кэширование
+                cache: 'no-store',
                 headers: {
                   'Cache-Control': 'no-cache'
                 }
               }
             );
-
+            
             const recData = await recResponse.json();
-
+            
             if (recData.success && recData.recommendations?.length > 0) {
               // Создаем Map для поиска книг
               const bookMap = new Map(formattedBooks.map(book => [book.id, book]));
-
+              
               // Получаем рекомендованные книги
               recommended = recData.recommendations
                 .map((id: number) => bookMap.get(id))
-                .filter((book: Book | undefined): book is Book => book !== undefined) // Убирает undefined значения (если книга не найдена)
+                .filter((book: Book | undefined): book is Book => book !== undefined)
                 .slice(0, 8);
             }
           }
@@ -161,9 +161,9 @@ export default function Home() {
 
       // Если нет рекомендаций, показываем случайные
       if (recommended.length === 0) {
-        const usedIds = new Set([...newArrivals.map(b => b.id), ...popular.map(b => b.id)]); // Kоллекция уникальных значений
+        const usedIds = new Set([...newArrivals.map(b => b.id), ...popular.map(b => b.id)]);
         recommended = formattedBooks
-          .filter(book => !usedIds.has(book.id)) // Фильтрует книги, которых еще нет в других категориях
+          .filter(book => !usedIds.has(book.id))
           .slice(0, 8);
       }
 
@@ -182,20 +182,20 @@ export default function Home() {
 
   // Первоначальная загрузка и подписка на события
   useEffect(() => {
-    fetchAllData(); // Парралельно выполняет несколько асинхронных операций
-
+    fetchAllData();
+    
     // Слушаем события обновления рекомендаций
     const handleRecommendationUpdate = () => {
-      console.log('Обновляем рекомендации по событию');
-
+      console.log('🔄 Обновляем рекомендации по событию');
+      
       // Небольшая задержка, чтобы дать время БД обновиться
       setTimeout(() => {
         fetchAllData();
       }, 500);
     };
-
+    
     window.addEventListener('recommendations-updated', handleRecommendationUpdate);
-
+    
     return () => {
       window.removeEventListener('recommendations-updated', handleRecommendationUpdate);
     };
@@ -225,8 +225,7 @@ export default function Home() {
   }, [allBooks]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value; // Получает текущее значение поля ввода
-
+    const value = e.target.value;
     setSearchQuery(value);
     searchBooks(value);
 
@@ -238,14 +237,14 @@ export default function Home() {
   };
 
   const handleResultClick = (book: Book) => {
-    setSearchQuery(''); // Сбрасывает состояние поиска
+    setSearchQuery('');
     setSearchResults([]);
     setShowResults(false);
-    router.push(book.href); // Переходит на страницу книги
+    router.push(book.href);
   };
 
   const handleClickOutside = (event: MouseEvent) => {
-    if (searchRef.current && !searchRef.current.contains(event.target as Node)) { // contains() — проверяет, содержится ли целевой элемент внутри searchRef
+    if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
       setShowResults(false);
     }
   };
@@ -423,38 +422,38 @@ export default function Home() {
             )}
 
             {/* Если нет рекомендаций */}
-            {bookData.recommended.length === 0 &&
-              (bookData.newArrivals.length > 0 || bookData.popular.length > 0) && (
-                <div className={styles.special}>
-                  <h2 style={{ color: '#FE7C96' }}>По вашим предпочтениям</h2>
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '2rem',
-                    backgroundColor: '#f9f9f9',
-                    borderRadius: '12px',
-                    marginTop: '1rem'
-                  }}>
-                    <p style={{ color: '#666', marginBottom: '1rem' }}>
-                      Оцените несколько книг или добавьте их в прочитанное,
-                      чтобы получить персональные рекомендации
-                    </p>
-                    <button
-                      onClick={() => router.push('/swipe')}
-                      style={{
-                        padding: '0.75rem 1.5rem',
-                        backgroundColor: '#FE7C96',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '0.9rem'
-                      }}
-                    >
-                      📚 Начать свайпить книги
-                    </button>
-                  </div>
+            {bookData.recommended.length === 0 && 
+             (bookData.newArrivals.length > 0 || bookData.popular.length > 0) && (
+              <div className={styles.special}>
+                <h2 style={{ color: '#FE7C96' }}>По вашим предпочтениям</h2>
+                <div style={{ 
+                  textAlign: 'center', 
+                  padding: '2rem',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '12px',
+                  marginTop: '1rem'
+                }}>
+                  <p style={{ color: '#666', marginBottom: '1rem' }}>
+                    Оцените несколько книг или добавьте их в прочитанное, 
+                    чтобы получить персональные рекомендации
+                  </p>
+                  <button 
+                    onClick={() => router.push('/swipe')}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      backgroundColor: '#FE7C96',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    📚 Начать свайпить книги
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
           </>
         )}
       </main>

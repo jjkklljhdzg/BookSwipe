@@ -45,7 +45,7 @@
 
 .input {
   background-color: var(--color-search-bg);
-  color: var(--color-search-text);
+  color: #A24557;
   border: none;
   width: 250px;
   padding: 10px 20px;
@@ -70,6 +70,10 @@
   font-weight: bold;
   border-radius: 20px;
   cursor: pointer;
+}
+
+.submitButton:hover {
+  background-color: #FE7C96;
 }
 
 .registerButton {
