@@ -4,7 +4,6 @@ import path from 'path';
 const Database = require('better-sqlite3');
 
 const dbPath = path.join(process.cwd(), 'BookSwipe.db');
-
 export const db = new Database(dbPath);
 
 // СОЗДАЕМ ТАБЛИЦУ User с правильной структурой
@@ -19,6 +18,23 @@ db.exec(`
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+// ДОБАВЛЯЕМ ОТСУТСТВУЮЩИЕ КОЛОНКИ ЕСЛИ НУЖНО
+try {
+  const columns = db.prepare("PRAGMA table_info(User)").all();
+  const hasUpdatedAt = columns.some((col: any) => col.name === 'updated_at');
+  
+  if (!hasUpdatedAt) {
+    db.exec(`ALTER TABLE User ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
+  }
+  
+  const hasCreatedAt = columns.some((col: any) => col.name === 'created_at');
+  if (!hasCreatedAt) {
+    db.exec(`ALTER TABLE User ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
+  }
+} catch (error) {
+  // Тихая обработка ошибок
+}
 
 // СОЗДАЕМ ТАБЛИЦУ Swipe для свайпов (лайков/дизлайков)
 db.exec(`
@@ -115,10 +131,9 @@ export const dbHelpers = {
         return existingUser;
       }
       
-      // Создаем нового пользователя
       const insertStmt = db.prepare(`
-        INSERT INTO User (email, password_hash, nickname, avatar_url, created_at, updated_at) 
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO User (email, password_hash, nickname, avatar_url) 
+        VALUES (?, ?, ?, ?)
       `);
       
       const defaultPassword = 'default_password_' + Date.now();
@@ -131,45 +146,71 @@ export const dbHelpers = {
       
       return { id: result.lastInsertRowid };
     } catch (error) {
-      console.error('Error in getOrCreateUser:', error);
       throw error;
     }
   },
 
-  updateUserAvatar: (email: string, avatar: string) => {
-    const stmt = db.prepare(`
-      UPDATE User
-      SET avatar_url = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE email = ?
-    `);
-    return stmt.run(avatar, email);
+  // Функция для получения профиля пользователя
+  getUserProfile: (email: string) => {
+    try {
+      const stmt = db.prepare(`
+        SELECT 
+          id,
+          email,
+          nickname as name,
+          avatar_url as avatar
+        FROM User 
+        WHERE email = ?
+      `);
+      return stmt.get(email);
+    } catch (error) {
+      throw error;
+    }
   },
 
-  updateUserProfile: (email: string, data: { name?: string, avatar?: string }) => {
-    const { name, avatar } = data;
-    if (name && avatar) {
+  // Функция для обновления аватара
+  updateUserAvatar: (email: string, avatar: string) => {
+    try {
       const stmt = db.prepare(`
-        UPDATE User
-        SET nickname = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE email = ?
-      `);
-      return stmt.run(name, avatar, email);
-    } else if (name) {
-      const stmt = db.prepare(`
-        UPDATE User
-        SET nickname = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE email = ?
-      `);
-      return stmt.run(name, email);
-    } else if (avatar) {
-      const stmt = db.prepare(`
-        UPDATE User
-        SET avatar_url = ?, updated_at = CURRENT_TIMESTAMP
+        UPDATE User 
+        SET avatar_url = ?
         WHERE email = ?
       `);
       return stmt.run(avatar, email);
+    } catch (error) {
+      throw error;
     }
-    return { changes: 0 };
+  },
+
+  // Функция для обновления профиля
+  updateUserProfile: (email: string, data: { name?: string, avatar?: string }) => {
+    try {
+      const { name, avatar } = data;
+      
+      let query = 'UPDATE User SET ';
+      const params: any[] = [];
+      
+      if (name && avatar) {
+        query += 'nickname = ?, avatar_url = ? ';
+        params.push(name, avatar);
+      } else if (name) {
+        query += 'nickname = ? ';
+        params.push(name);
+      } else if (avatar) {
+        query += 'avatar_url = ? ';
+        params.push(avatar);
+      } else {
+        return { changes: 0 };
+      }
+      
+      query += 'WHERE email = ?';
+      params.push(email);
+      
+      const stmt = db.prepare(query);
+      return stmt.run(...params);
+    } catch (error) {
+      throw error;
+    }
   },
 
   getAllUsers: () => {
@@ -179,17 +220,14 @@ export const dbHelpers = {
   // Функции для работы со свайпами
   addSwipe: (userId: number, bookId: number, type: 'like' | 'dislike') => {
     try {
-      // Удаляем старый свайп если есть
       db.prepare('DELETE FROM Swipe WHERE user_id = ? AND book_id = ?').run(userId, bookId);
       
-      // Добавляем новый
       const stmt = db.prepare(`
         INSERT INTO Swipe (user_id, book_id, type, created_at)
         VALUES (?, ?, ?, ?)
       `);
       return stmt.run(userId, bookId, type, new Date().toISOString());
     } catch (error) {
-      console.error('Error adding swipe:', error);
       throw error;
     }
   },
@@ -227,17 +265,14 @@ export const dbHelpers = {
   // Функции для работы с коллекциями
   addToCollection: (userId: number, bookId: number, collectionType: string) => {
     try {
-      // Удаляем старую запись если есть
       db.prepare('DELETE FROM Collection WHERE user_id = ? AND book_id = ?').run(userId, bookId);
       
-      // Добавляем новую
       const stmt = db.prepare(`
         INSERT INTO Collection (user_id, book_id, collection_type, created_at)
         VALUES (?, ?, ?, ?)
       `);
       return stmt.run(userId, bookId, collectionType, new Date().toISOString());
     } catch (error) {
-      console.error('Error adding to collection:', error);
       throw error;
     }
   },
@@ -280,7 +315,6 @@ export const dbHelpers = {
         `).all(userId);
       }
     } catch (error) {
-      console.error('Error getting user collection:', error);
       return [];
     }
   },
@@ -299,46 +333,5 @@ export const dbHelpers = {
       FROM Collection 
       WHERE user_id = ? AND book_id = ?
     `).get(userId, bookId);
-  },
-
-  // Функция для проверки существования таблиц
-  checkTables: () => {
-    const tables = db.prepare(`
-      SELECT name FROM sqlite_master 
-      WHERE type='table' 
-      ORDER BY name
-    `).all();
-    
-    console.log('Tables in database:');
-    tables.forEach((table: any) => {
-      console.log('-', table.name);
-    });
-    
-    return tables;
-  },
-
-  // Функция для проверки данных в таблицах
-  checkData: (userId: number) => {
-    console.log(`\nChecking data for user ID: ${userId}`);
-    
-    // Проверяем пользователя
-    const user = db.prepare('SELECT * FROM User WHERE id = ?').get(userId);
-    console.log('User:', user);
-    
-    // Проверяем свайпы
-    const swipes = db.prepare('SELECT * FROM Swipe WHERE user_id = ?').all(userId);
-    console.log(`Swipe records: ${swipes.length}`);
-    swipes.forEach((swipe: any, index: number) => {
-      console.log(`  ${index + 1}. Book ${swipe.book_id}: ${swipe.type}`);
-    });
-    
-    // Проверяем коллекцию
-    const collection = db.prepare('SELECT * FROM Collection WHERE user_id = ?').all(userId);
-    console.log(`Collection records: ${collection.length}`);
-    collection.forEach((item: any, index: number) => {
-      console.log(`  ${index + 1}. Book ${item.book_id}: ${item.collection_type}`);
-    });
-    
-    return { user, swipes, collection };
   }
 };

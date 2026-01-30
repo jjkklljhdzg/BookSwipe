@@ -11,7 +11,7 @@ interface BookCardProps {
   rating: string;
   imageUrl: string;
   href: string;
-  reviewCount?: number; 
+  reviewCount?: number; // добавили новое свойство
 }
 
 export default function BookCard({
