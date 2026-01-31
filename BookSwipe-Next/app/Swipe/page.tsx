@@ -281,7 +281,7 @@ export default function SwipePage() {
     const currentBook = books[currentIndex];
     if (!currentBook) return;
 
-    // 🔥 ТОЛЬКО сохранение в базу данных (никакого localStorage!)
+    // сохранение в базу данных
     if (userId) {
       await saveToCollection(userId, currentBook.id, 'saved');
     } else {
@@ -457,4 +457,5 @@ export default function SwipePage() {
       <BottomNav />
     </div>
   );
+
 }
