@@ -35,15 +35,14 @@ export class RecommendationService {
         доступно: allBooks.length
       });
 
-      // 🔥 КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Учитываем ВСЕ взаимодействия
-      // Дизлайки тоже важны - они показывают, что пользователю НЕ нравится
+      //Учитываем ВСЕ взаимодействия
       const totalInteractions = likedBooks.length + dislikedBooks.length + readBooks.length;
       
       // Если есть хоть какие-то взаимодействия (даже только дизлайки)
       if (totalInteractions >= 1) {
         console.log('Используем взаимодействия для рекомендаций');
         
-        // 🔥 Передаем дизлайки в DeepSeek
+        // Передаем дизлайки в DeepSeek
         const recommendations = await this.deepseekService.getRecommendations(
           likedBooks,
           dislikedBooks, // Теперь передаем дизлайки
@@ -126,7 +125,7 @@ export class RecommendationService {
 
   private async getAllAvailableBooks(userId: number): Promise<BookData[]> {
     try {
-      // 🔥 ИСКЛЮЧАЕМ книги, которые пользователь уже дизлайкнул
+      // Исключаем книги, которые пользователь уже дизлайкнул
       const stmt = db.prepare(`
         SELECT b.id, b.title, b.author, b.genres 
         FROM Book b
@@ -166,7 +165,7 @@ export class RecommendationService {
       
       const params: any[] = [];
       
-      // 🔥 ИСКЛЮЧАЕМ книги, которые пользователь дизлайкнул
+      //Исключаем книги, которые пользователь дизлайкнул
       if (userId) {
         query += `
           WHERE b.id NOT IN (
@@ -205,7 +204,7 @@ export class RecommendationService {
       let query = 'SELECT id FROM Book';
       const params: any[] = [];
       
-      // 🔥 ИСКЛЮЧАЕМ дизлайкнутые книги
+      //Исключаем дизлайкнутые книги
       if (userId) {
         query += ' WHERE id NOT IN (SELECT book_id FROM Swipe WHERE user_id = ? AND type = "dislike")';
         params.push(userId);
@@ -249,7 +248,7 @@ export class RecommendationService {
       });
     });
 
-    // 🔥 Анализируем жанры из ДИЗЛАЙКОВ (чтобы их избегать)
+    // Анализируем жанры из ДИЗЛАЙКОВ (чтобы их избегать)
     const dislikedGenres: Set<string> = new Set();
     
     dislikedBooks.forEach(book => {
@@ -270,7 +269,7 @@ export class RecommendationService {
       const bookGenres = book.genres.split(',').map(g => g.trim());
       let score = 0;
       
-      // 🔥 Бонус за жанры из лайков
+      // Бонус за жанры из лайков
       bookGenres.forEach(genre => {
         const index = sortedLikedGenres.indexOf(genre);
         if (index !== -1) {
@@ -278,14 +277,14 @@ export class RecommendationService {
         }
       });
       
-      // 🔥 Штраф за жанры из дизлайков
+      // Штраф за жанры из дизлайков
       bookGenres.forEach(genre => {
         if (dislikedGenres.has(genre)) {
           score -= 10; // Большой штраф за дизлайки
         }
       });
       
-      // 🔥 Максимальный штраф, если книга уже была дизлайкнута
+      // Максимальный штраф, если книга уже была дизлайкнута
       if (dislikedBooks.some(disliked => disliked.id === book.id)) {
         score = -1000;
       }
@@ -317,7 +316,7 @@ export class RecommendationService {
     }
   }
 
-  // 🔥 НОВЫЙ МЕТОД: Получение статистики взаимодействий
+  //Получение статистики взаимодействий
   async getUserInteractions(userId: number): Promise<{
     likes: number;
     dislikes: number;
@@ -349,4 +348,5 @@ export class RecommendationService {
       return { likes: 0, dislikes: 0, read: 0 };
     }
   }
+
 }
