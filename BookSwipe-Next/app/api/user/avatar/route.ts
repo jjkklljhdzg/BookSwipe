@@ -5,8 +5,8 @@ export async function POST(request: Request) {
   try {
     const { email, avatar } = await request.json();
 
-    console.log('POST /api/user/avatar:', { 
-      email, 
+    console.log('POST /api/user/avatar:', {
+      email,
       hasAvatar: !!avatar,
       avatarLength: avatar?.length,
       isDataURL: avatar?.startsWith?.('data:image')
@@ -27,10 +27,10 @@ export async function POST(request: Request) {
     }
 
     // Обновляем аватар в базе данных
-    const result = dbHelpers.updateUserAvatar(email, avatar);
+    const result = dbHelpers.updateUserProfile(email, { avatar });
     console.log('Avatar update result:', result);
 
-    if (result.changes === 0) {
+    if (result && result.changes === 0) {
       return NextResponse.json(
         { success: false, message: 'Пользователь не найден или данные не изменились' },
         { status: 404 }
@@ -50,8 +50,8 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('Avatar API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         message: 'Ошибка при обновлении аватара',
         error: error.message
       },

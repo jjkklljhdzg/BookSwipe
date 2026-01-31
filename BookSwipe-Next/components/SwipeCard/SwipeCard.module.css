@@ -103,11 +103,11 @@
   word-wrap: break-word; /* Ваше улучшение */
 }
 
-.description p {
+.description :global(p) {
   margin: 0 0 8px 0;
   overflow: hidden;
   transition: max-height 0.3s ease;
-  word-break: break-word; /* Ваше улучшение */
+  word-break: break-word;
 }
 
 .description p:not(.expandedText) {

@@ -125,51 +125,93 @@ export default function ProfilePage() {
                 console.log('Processed collection:', collection.length, 'items');
                 
                 setUserCollection(collection);
-                localStorage.setItem('userCollection', JSON.stringify(collection));
-                localStorage.setItem(`userCollection_${userId}`, JSON.stringify(collection));
             } else {
                 console.warn('No collection data received');
-                const savedCollection = localStorage.getItem(`userCollection_${userId}`) || 
-                                        localStorage.getItem('userCollection');
-                if (savedCollection) {
-                    try {
-                        const collection: UserCollectionItem[] = JSON.parse(savedCollection);
-                        collection.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
-                        setUserCollection(collection);
-                    } catch (error) {
-                        console.error('Error parsing localStorage collection:', error);
-                        setUserCollection([]);
-                    }
-                }
+                setUserCollection([]);
             }
         } catch (error) {
             console.error('Error loading collection from API:', error);
-            const savedCollection = localStorage.getItem(`userCollection_${userId}`) || 
-                                    localStorage.getItem('userCollection');
-            if (savedCollection) {
-                try {
-                    const collection: UserCollectionItem[] = JSON.parse(savedCollection);
-                    collection.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
-                    setUserCollection(collection);
-                } catch (e) {
-                    console.error('Error parsing localStorage collection:', e);
-                    setUserCollection([]);
-                }
-            }
+            setUserCollection([]);
         }
     };
 
-    const loadUserReviews = () => {
-        const savedReviews = localStorage.getItem('userReviews');
-        if (savedReviews) {
-            try {
-                const reviews: Comment[] = JSON.parse(savedReviews);
-                reviews.sort((a, b) => b.id - a.id);
-                setUserReviews(reviews);
-            } catch (error) {
-                console.error('Error loading reviews:', error);
+    const loadUserReviewsFromDB = async () => {
+        if (!userId) {
+            console.log('No userId, cannot load reviews from DB');
+            setUserReviews([]);
+            return;
+        }
+
+        try {
+            console.log('Loading reviews from DB for user ID:', userId);
+            
+            const response = await fetch(`/api/reviews?userId=${userId}`);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Failed to load reviews from DB:', errorText);
+                setUserReviews([]);
+                return;
+            }
+
+            const data = await response.json();
+            console.log('Reviews API response:', data);
+
+            if (data.success && data.reviews) {
+                // Форматируем отзывы из БД в формат Comment
+                const formattedReviews: Comment[] = data.reviews.map((review: any) => {
+                    // Форматируем дату
+                    const reviewDate = review.created_at || review.date;
+                    let formattedDate;
+                    if (reviewDate) {
+                        try {
+                            formattedDate = new Date(reviewDate).toLocaleDateString('ru-RU', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            });
+                        } catch (e) {
+                            formattedDate = reviewDate;
+                        }
+                    } else {
+                        formattedDate = 'Дата неизвестна';
+                    }
+
+                    return {
+                        id: review.id,
+                        bookId: review.bookId || review.book_id,
+                        userId: userId.toString(),
+                        userName: userData.name || review.userName || 'Пользователь',
+                        userAvatar: userData.avatar || '/img/ava.jpg',
+                        rating: review.rating,
+                        text: review.text || '',
+                        date: formattedDate,
+                        bookTitle: review.bookTitle || 'Без названия',
+                        bookAuthor: review.bookAuthor || 'Неизвестный автор',
+                        bookImage: review.bookImage || review.bookImage || '/img/default-book.jpg'
+                    };
+                });
+
+                // Сортируем по дате (новые сначала)
+                formattedReviews.sort((a, b) => {
+                    try {
+                        const dateA = new Date(a.date.split('.').reverse().join('-'));
+                        const dateB = new Date(b.date.split('.').reverse().join('-'));
+                        return dateB.getTime() - dateA.getTime();
+                    } catch (e) {
+                        return b.id - a.id;
+                    }
+                });
+
+                console.log('Loaded reviews from DB:', formattedReviews.length, 'items');
+                setUserReviews(formattedReviews);
+            } else {
+                console.warn('No reviews data received from DB');
                 setUserReviews([]);
             }
+        } catch (error) {
+            console.error('Error loading reviews from DB:', error);
+            setUserReviews([]);
         }
     };
 
@@ -239,7 +281,7 @@ export default function ProfilePage() {
                         localStorage.setItem('userId', userId.toString());
                         
                         await loadUserCollection();
-                        loadUserReviews();
+                        await loadUserReviewsFromDB();
                     } else if (data.success && data.name) {
                         const userId = await getUserIdByEmail(userEmail);
                         const avatar = data.avatar || userAvatar || '/img/ava.jpg';
@@ -262,12 +304,47 @@ export default function ProfilePage() {
                         
                         if (userId) {
                             await loadUserCollection();
-                            loadUserReviews();
+                            await loadUserReviewsFromDB();
                         }
+                    }
+                } else {
+                    // Fallback к localStorage данным
+                    const name = userName || userEmail.split('@')[0] || 'Пользователь';
+                    const avatar = userAvatar || '/img/ava.jpg';
+                    
+                    setUserData(prev => ({
+                        ...prev,
+                        name: name,
+                        nickname: `@${name.toLowerCase().replace(/\s+/g, '')}`,
+                        avatar: avatar
+                    }));
+
+                    const userId = localStorage.getItem('userId');
+                    if (userId) {
+                        setUserId(parseInt(userId));
+                        await loadUserCollection();
+                        await loadUserReviewsFromDB();
                     }
                 }
             } catch (error) {
                 console.error('Error loading profile:', error);
+                // Fallback к localStorage данным
+                const name = userName || userEmail.split('@')[0] || 'Пользователь';
+                const avatar = userAvatar || '/img/ava.jpg';
+                
+                setUserData(prev => ({
+                    ...prev,
+                    name: name,
+                    nickname: `@${name.toLowerCase().replace(/\s+/g, '')}`,
+                    avatar: avatar
+                }));
+
+                const userId = localStorage.getItem('userId');
+                if (userId) {
+                    setUserId(parseInt(userId));
+                    await loadUserCollection();
+                    await loadUserReviewsFromDB();
+                }
             }
 
             setIsLoading(false);
@@ -281,18 +358,28 @@ export default function ProfilePage() {
                 loadUserCollection();
             }
         };
+
+        const handleReviewsUpdate = () => {
+            console.log('Reviews update detected, refreshing...');
+            if (userId) {
+                loadUserReviewsFromDB();
+            }
+        };
         
         window.addEventListener('collectionUpdated', handleCollectionUpdate);
+        window.addEventListener('reviewsUpdated', handleReviewsUpdate);
         
         return () => {
             window.removeEventListener('collectionUpdated', handleCollectionUpdate);
+            window.removeEventListener('reviewsUpdated', handleReviewsUpdate);
         };
     }, [router]);
 
     useEffect(() => {
         if (userId) {
-            console.log('UserId changed to:', userId, ', loading collection...');
+            console.log('UserId changed to:', userId, ', loading collection and reviews...');
             loadUserCollection();
+            loadUserReviewsFromDB();
         }
     }, [userId]);
 
@@ -313,15 +400,8 @@ export default function ProfilePage() {
             localStorage.removeItem('userEmail');
             localStorage.removeItem('userName');
             localStorage.removeItem('userAvatar');
-            localStorage.removeItem('userCollection');
             localStorage.removeItem('userId');
-            localStorage.removeItem('userReviews');
             
-            const userIdStr = userId?.toString();
-            if (userIdStr) {
-                localStorage.removeItem(`userCollection_${userIdStr}`);
-            }
-
             showNotification('Вы успешно вышли из аккаунта');
 
             setTimeout(() => {
@@ -759,7 +839,7 @@ export default function ProfilePage() {
                             <div className={styles.reviewTop}>
                                 <div
                                     className={styles.smallAvatar}
-                                    style={{ backgroundImage: `url(${userData.avatar})` }}
+                                    style={{ backgroundImage: `url(${review.userAvatar || userData.avatar})` }}
                                 />
                                 <div className={styles.reviewInfo}>
                                     <div>{review.date}</div>

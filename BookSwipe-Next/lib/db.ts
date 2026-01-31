@@ -19,22 +19,98 @@ db.exec(`
   )
 `);
 
-// ДОБАВЛЯЕМ ОТСУТСТВУЮЩИЕ КОЛОНКИ ЕСЛИ НУЖНО
-try {
-  const columns = db.prepare("PRAGMA table_info(User)").all();
-  const hasUpdatedAt = columns.some((col: any) => col.name === 'updated_at');
-  
-  if (!hasUpdatedAt) {
-    db.exec(`ALTER TABLE User ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
-  }
-  
-  const hasCreatedAt = columns.some((col: any) => col.name === 'created_at');
-  if (!hasCreatedAt) {
-    db.exec(`ALTER TABLE User ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
-  }
-} catch (error) {
-  // Тихая обработка ошибок
-}
+// СОЗДАЕМ ТАБЛИЦУ Book (если её еще нет)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS Book (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    author TEXT NOT NULL,
+    genres TEXT,
+    published_at TEXT,
+    annotation TEXT,
+    series_title TEXT,
+    series_number INTEGER,
+    cover_url TEXT,
+    rating REAL DEFAULT 0,
+    review_count INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// СОЗДАЕМ ТАБЛИЦУ Review
+db.exec(`
+  CREATE TABLE IF NOT EXISTS Review (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    text TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES Book(id) ON DELETE CASCADE,
+    UNIQUE(user_id, book_id)
+  )
+`);
+// Добавьте в lib/db.ts после создания таблицы Review:
+db.exec(`
+  CREATE TRIGGER IF NOT EXISTS update_book_stats 
+  AFTER INSERT ON Review
+  BEGIN
+    UPDATE Book
+    SET 
+      rating = (
+        SELECT AVG(rating) 
+        FROM Review 
+        WHERE book_id = NEW.book_id
+      ),
+      review_count = (
+        SELECT COUNT(*) 
+        FROM Review 
+        WHERE book_id = NEW.book_id
+      )
+    WHERE id = NEW.book_id;
+  END
+`);
+
+db.exec(`
+  CREATE TRIGGER IF NOT EXISTS update_book_stats_update 
+  AFTER UPDATE ON Review
+  BEGIN
+    UPDATE Book
+    SET 
+      rating = (
+        SELECT AVG(rating) 
+        FROM Review 
+        WHERE book_id = NEW.book_id
+      ),
+      review_count = (
+        SELECT COUNT(*) 
+        FROM Review 
+        WHERE book_id = NEW.book_id
+      )
+    WHERE id = NEW.book_id;
+  END
+`);
+
+db.exec(`
+  CREATE TRIGGER IF NOT EXISTS update_book_stats_delete 
+  AFTER DELETE ON Review
+  BEGIN
+    UPDATE Book
+    SET 
+      rating = (
+        SELECT AVG(rating) 
+        FROM Review 
+        WHERE book_id = OLD.book_id
+      ),
+      review_count = (
+        SELECT COUNT(*) 
+        FROM Review 
+        WHERE book_id = OLD.book_id
+      )
+    WHERE id = OLD.book_id;
+  END
+`);
 
 // СОЗДАЕМ ТАБЛИЦУ Swipe для свайпов (лайков/дизлайков)
 db.exec(`
@@ -64,6 +140,25 @@ db.exec(`
   )
 `);
 
+// ДОБАВЛЯЕМ ОТСУТСТВУЮЩИЕ КОЛОНКИ ЕСЛИ НУЖНО
+try {
+  const columns = db.prepare("PRAGMA table_info(Book)").all();
+  const hasRating = columns.some((col: any) => col.name === 'rating');
+  
+  if (!hasRating) {
+    db.exec(`ALTER TABLE Book ADD COLUMN rating REAL DEFAULT 0`);
+  }
+  
+  const hasReviewCount = columns.some((col: any) => col.name === 'review_count');
+  if (!hasReviewCount) {
+    db.exec(`ALTER TABLE Book ADD COLUMN review_count INTEGER DEFAULT 0`);
+  }
+} catch (error) {
+  // Тихая обработка ошибок
+}
+
+
+
 // Вспомогательные функции для работы с БД
 export const dbHelpers = {
   getBooks: () => {
@@ -79,13 +174,35 @@ export const dbHelpers = {
         b.series_number as seriesNumber,
         b.cover_url as coverUrl,
         b.created_at as createdAt,
-        COALESCE(AVG(r.rating), 0) as averageRating,
-        COUNT(r.id) as reviewCount
+        b.rating,
+        b.review_count as reviewCount
       FROM Book b
-      LEFT JOIN Review r ON b.id = r.book_id
-      GROUP BY b.id
       ORDER BY b.created_at DESC
     `).all();
+  },
+
+  getBookById: (bookId: number) => {
+    try {
+      return db.prepare(`
+        SELECT
+          b.id,
+          b.title,
+          b.author,
+          b.genres,
+          b.published_at as publishedAt,
+          b.annotation,
+          b.series_title as seriesTitle,
+          b.series_number as seriesNumber,
+          b.cover_url as coverUrl,
+          b.created_at as createdAt,
+          b.rating,
+          b.review_count as reviewCount
+        FROM Book b
+        WHERE b.id = ?
+      `).get(bookId);
+    } catch (error) {
+      return null;
+    }
   },
 
   searchBooks: (query: string) => {
@@ -97,17 +214,16 @@ export const dbHelpers = {
         b.author,
         b.genres,
         b.cover_url as coverUrl,
-        COALESCE(AVG(r.rating), 0) as averageRating,
-        COUNT(r.id) as reviewCount
+        b.rating,
+        b.review_count as reviewCount
       FROM Book b
-      LEFT JOIN Review r ON b.id = r.book_id
       WHERE b.title LIKE ? OR b.author LIKE ? OR b.genres LIKE ?
-      GROUP BY b.id
-      ORDER BY averageRating DESC
+      ORDER BY b.rating DESC
       LIMIT 10
     `).all(searchTerm, searchTerm, searchTerm);
   },
 
+  // Функции для работы с пользователями
   addUser: (email: string, password: string, name?: string, avatar?: string) => {
     const stmt = db.prepare(`
       INSERT INTO User (email, password_hash, nickname, avatar_url)
@@ -121,7 +237,6 @@ export const dbHelpers = {
     return stmt.get(email);
   },
 
-  // Функция для создания пользователя если его нет
   getOrCreateUser: function(email: string) {
     try {
       const stmt = db.prepare('SELECT id FROM User WHERE email = ?');
@@ -150,7 +265,6 @@ export const dbHelpers = {
     }
   },
 
-  // Функция для получения профиля пользователя
   getUserProfile: (email: string) => {
     try {
       const stmt = db.prepare(`
@@ -168,21 +282,6 @@ export const dbHelpers = {
     }
   },
 
-  // Функция для обновления аватара
-  updateUserAvatar: (email: string, avatar: string) => {
-    try {
-      const stmt = db.prepare(`
-        UPDATE User 
-        SET avatar_url = ?
-        WHERE email = ?
-      `);
-      return stmt.run(avatar, email);
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Функция для обновления профиля
   updateUserProfile: (email: string, data: { name?: string, avatar?: string }) => {
     try {
       const { name, avatar } = data;
@@ -215,6 +314,105 @@ export const dbHelpers = {
 
   getAllUsers: () => {
     return db.prepare('SELECT * FROM User').all();
+  },
+
+  // Функции для работы с отзывами
+  addReview: (userId: number, bookId: number, rating: number, text: string) => {
+    try {
+      // Сначала проверяем, есть ли уже отзыв от этого пользователя
+      const existing = db.prepare(`
+        SELECT id FROM Review 
+        WHERE user_id = ? AND book_id = ?
+      `).get(userId, bookId);
+
+      if (existing) {
+        // Обновляем существующий отзыв
+        const stmt = db.prepare(`
+          UPDATE Review 
+          SET rating = ?, text = ?, created_at = ?
+          WHERE id = ?
+        `);
+        return stmt.run(rating, text, new Date().toISOString(), existing.id);
+      } else {
+        // Создаем новый отзыв
+        const stmt = db.prepare(`
+          INSERT INTO Review (user_id, book_id, rating, text, created_at)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+        return stmt.run(userId, bookId, rating, text, new Date().toISOString());
+      }
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getBookReviews: (bookId: number) => {
+    try {
+      return db.prepare(`
+        SELECT 
+          r.id,
+          r.user_id as userId,
+          r.rating,
+          r.text,
+          r.created_at as createdAt,
+          u.nickname as userName,
+          u.avatar_url as userAvatar
+        FROM Review r
+        LEFT JOIN User u ON r.user_id = u.id
+        WHERE r.book_id = ?
+        ORDER BY r.created_at DESC
+      `).all(bookId);
+    } catch (error) {
+      return [];
+    }
+  },
+
+  getUserReview: (userId: number, bookId: number) => {
+    try {
+      return db.prepare(`
+        SELECT 
+          r.id,
+          r.rating,
+          r.text,
+          r.created_at
+        FROM Review r
+        WHERE r.user_id = ? AND r.book_id = ?
+      `).get(userId, bookId);
+    } catch (error) {
+      return null;
+    }
+  },
+
+  getUserReviews: (userId: number) => {
+    try {
+      return db.prepare(`
+        SELECT 
+          r.id,
+          r.rating,
+          r.text,
+          r.created_at,
+          b.id as bookId,
+          b.title as bookTitle,
+          b.author as bookAuthor,
+          b.cover_url as bookImage
+        FROM Review r
+        JOIN Book b ON r.book_id = b.id
+        WHERE r.user_id = ?
+        ORDER BY r.created_at DESC
+      `).all(userId);
+    } catch (error) {
+      return [];
+    }
+  },
+
+  deleteReview: (reviewId: number) => {
+    try {
+      return db.prepare(`
+        DELETE FROM Review WHERE id = ?
+      `).run(reviewId);
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Функции для работы со свайпами
@@ -326,7 +524,6 @@ export const dbHelpers = {
     `).run(userId, bookId);
   },
 
-  // Проверить есть ли книга в коллекции пользователя
   checkBookInCollection: (userId: number, bookId: number) => {
     return db.prepare(`
       SELECT collection_type 

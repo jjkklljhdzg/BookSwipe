@@ -7,40 +7,55 @@ export async function GET() {
     const books = db
       .prepare(`
         SELECT
-          id,
-          title,
-          author,
-          genres,
-          published_at as publishedAt,
-          annotation,
-          series_title as seriesTitle,
-          series_number as seriesNumber,
-          cover_url as coverUrl,
-          created_at as createdAt
-        FROM Book
-        ORDER BY created_at DESC
+          b.id,
+          b.title,
+          b.author,
+          b.genres,
+          b.published_at as publishedAt,
+          b.annotation,
+          b.series_title as seriesTitle,
+          b.series_number as seriesNumber,
+          b.cover_url as coverUrl,
+          b.created_at as createdAt,
+          COALESCE(r.averageRating, 0) as averageRating,
+          COALESCE(r.reviewCount, 0) as reviewCount
+        FROM Book b
+        LEFT JOIN (
+          SELECT 
+            book_id,
+            AVG(rating) as averageRating,
+            COUNT(*) as reviewCount
+          FROM Review
+          GROUP BY book_id
+        ) r ON b.id = r.book_id
+        ORDER BY b.created_at DESC
       `)
       .all();
 
-    // Добавляем рейтинг и количество отзывов
-    const booksWithRating = books.map((book: any) => {
-      // Получаем рейтинг для книги
-      const ratingData = db
-        .prepare(`
-          SELECT 
-            AVG(rating) as averageRating,
-            COUNT(*) as reviewCount
-          FROM Review 
-          WHERE book_id = ?
-        `)
-        .get(book.id);
-      
-      return {
-        ...book,
-        rating: ratingData?.averageRating ? parseFloat(ratingData.averageRating).toFixed(1) : '0.0',
-        reviewCount: ratingData?.reviewCount || 0
-      };
-    });
+    // ФИЛЬТРУЕМ ДУБЛИКАТЫ ПО ID (добавьте этот блок)
+    const uniqueBooks = [];
+    const seenIds = new Set();
+    
+    for (const book of books) {
+      if (!seenIds.has(book.id)) {
+        seenIds.add(book.id);
+        uniqueBooks.push(book);
+      } else {
+        console.warn(`Found duplicate book with ID: ${book.id}, title: ${book.title}`);
+      }
+    }
+
+    // Форматируем рейтинг
+    const booksWithRating = uniqueBooks.map((book: any) => ({
+      ...book,
+      rating: book.averageRating ? parseFloat(book.averageRating).toFixed(1) : '0.0',
+      reviewCount: book.reviewCount || 0
+    }));
+
+    // Логируем если были дубликаты
+    if (books.length !== uniqueBooks.length) {
+      console.warn(`Removed ${books.length - uniqueBooks.length} duplicate books from API response`);
+    }
 
     return NextResponse.json(booksWithRating);
   } catch (error) {

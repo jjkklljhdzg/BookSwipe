@@ -45,6 +45,7 @@ export async function GET(
       );
     }
 
+    // Получаем рейтинг и отзывы из БД
     const ratingData = db
       .prepare(`
         SELECT 
