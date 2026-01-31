@@ -30,7 +30,7 @@ export async function GET(request: Request) {
         );
         
         const newUser = dbHelpers.getUserProfile(email);
-        console.log('✅ Created new user:', newUser);
+        console.log('Created new user:', newUser);
         
         return NextResponse.json({
           success: true,
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       user: {
-        id: user.id, // ✅ ДОБАВЛЕНО ID!
+        id: user.id,
         name: user.name,
         avatar: user.avatar,
         email: user.email
@@ -106,7 +106,7 @@ export async function PUT(request: Request) {
       success: true,
       message: 'Профиль успешно обновлен',
       user: {
-        id: updatedUser?.id, // ✅ ДОБАВЛЕНО ID!
+        id: updatedUser?.id,
         name: updatedUser?.name,
         avatar: updatedUser?.avatar,
         email: updatedUser?.email

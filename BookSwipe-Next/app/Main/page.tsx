@@ -449,7 +449,7 @@ export default function Home() {
                       fontSize: '0.9rem'
                     }}
                   >
-                     Начать свайпить книги
+                    📚 Начать свайпить книги
                   </button>
                 </div>
               </div>
@@ -461,5 +461,4 @@ export default function Home() {
       <BottomNav />
     </div>
   );
-
 }

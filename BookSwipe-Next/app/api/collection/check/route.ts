@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       bookId: parseInt(bookId)
     });
   } catch (error) {
-    console.error('❌ Ошибка проверки коллекции:', error);
+    console.error('Ошибка проверки коллекции:', error);
     return NextResponse.json(
       { 
         success: false, 

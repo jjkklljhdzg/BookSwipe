@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('📥 Получение отзывов для пользователя ID:', userId);
+    console.log('Получение отзывов для пользователя ID:', userId);
 
     const reviews = db
       .prepare(`
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userId, bookId, rating, text } = body;
 
-    console.log('📤 Saving review to DB:', { userId, bookId, rating });
+    console.log('Saving review to DB:', { userId, bookId, rating });
 
     if (!userId || !bookId || !rating) {
       return NextResponse.json(
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       `);
       stmt.run(rating, text || '', existingReview.id);
       reviewId = existingReview.id;
-      console.log('✅ Updated existing review');
+      console.log('Updated existing review');
     } else {
       // Создаем новый отзыв
       const stmt = db.prepare(`
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
         text || ''
       );
       reviewId = result.lastInsertRowid;
-      console.log('✅ Created new review, ID:', reviewId);
+      console.log('Created new review, ID:', reviewId);
     }
 
     return NextResponse.json({

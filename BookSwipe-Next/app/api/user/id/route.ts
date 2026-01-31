@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         );
         
         const newUserId = result.lastInsertRowid;
-        console.log('✅ Created new user with ID:', newUserId);
+        console.log('Created new user with ID:', newUserId);
         
         return NextResponse.json({
           success: true,
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('✅ User found:', { 
+    console.log('User found:', { 
       id: user.id, 
       nickname: user.nickname,
       email: user.email 

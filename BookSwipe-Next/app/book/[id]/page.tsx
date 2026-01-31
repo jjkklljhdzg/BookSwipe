@@ -90,19 +90,19 @@ const StarRating = ({
 async function getUserId(): Promise<number | null> {
     const userEmail = localStorage.getItem('userEmail');
     if (!userEmail) {
-        console.log('❌ No user email in localStorage');
+        console.log('No user email in localStorage');
         return null;
     }
 
     // Проверяем, может ID уже сохранен в localStorage
     const cachedUserId = localStorage.getItem('userId');
     if (cachedUserId) {
-        console.log('✅ Using cached user ID:', cachedUserId);
+        console.log('Using cached user ID:', cachedUserId);
         return parseInt(cachedUserId);
     }
 
     try {
-        console.log('🔄 Getting user ID for email:', userEmail);
+        console.log('Getting user ID for email:', userEmail);
 
         // Попытка 1: Используем /api/user/id
         const response = await fetch('/api/user/id', {
@@ -111,46 +111,46 @@ async function getUserId(): Promise<number | null> {
             body: JSON.stringify({ email: userEmail })
         });
 
-        console.log('📡 Response status:', response.status);
+        console.log('Response status:', response.status);
 
         const data = await response.json();
-        console.log('📊 Response data:', data);
+        console.log('Response data:', data);
 
         if (data.success && data.userId) {
             const userId = data.userId;
-            console.log('✅ Found user ID:', userId);
+            console.log('Found user ID:', userId);
             localStorage.setItem('userId', userId.toString());
             return userId;
         }
 
         // Попытка 2: Используем /api/user/profile как fallback
-        console.log('🔄 Trying fallback: /api/user/profile');
+        console.log('Trying fallback: /api/user/profile');
         const fallbackResponse = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
 
         if (fallbackResponse.ok) {
             const profileData = await fallbackResponse.json();
-            console.log('📊 Fallback response:', profileData);
+            console.log('Fallback response:', profileData);
 
             if (profileData.success && profileData.user && profileData.user.id) {
                 const userId = profileData.user.id;
-                console.log('✅ Found user ID from profile:', userId);
+                console.log('Found user ID from profile:', userId);
                 localStorage.setItem('userId', userId.toString());
                 return userId;
             }
         }
 
-        console.error('❌ User not found in any endpoint');
+        console.error('User not found in any endpoint');
         return null;
 
     } catch (error) {
-        console.error('🔥 Error getting user ID:', error);
+        console.error('Error getting user ID:', error);
         return null;
     }
 }
 
 async function saveToCollectionDB(userId: number, bookId: number, status: string): Promise<boolean> {
     try {
-        console.log('💾 Saving to collection DB:', { userId, bookId, status });
+        console.log('Saving to collection DB:', { userId, bookId, status });
 
         const response = await fetch('/api/collection', {
             method: 'POST',
@@ -162,27 +162,27 @@ async function saveToCollectionDB(userId: number, bookId: number, status: string
             })
         });
 
-        console.log('📡 API Response status:', response.status);
+        console.log('API Response status:', response.status);
 
         const data = await response.json();
-        console.log('📊 API Response data:', data);
+        console.log('API Response data:', data);
 
         if (response.ok && data.success) {
-            console.log('✅ Successfully saved to collection');
+            console.log('Successfully saved to collection');
             return true;
         } else {
-            console.error('❌ Failed to save:', data);
+            console.error('Failed to save:', data);
             return false;
         }
     } catch (error) {
-        console.error('🔥 Error in saveToCollectionDB:', error);
+        console.error('Error in saveToCollectionDB:', error);
         return false;
     }
 }
 
 async function removeFromCollectionDB(userId: number, bookId: number): Promise<boolean> {
     try {
-        console.log('🗑️ Removing from collection DB:', { userId, bookId });
+        console.log('Removing from collection DB:', { userId, bookId });
 
         const response = await fetch('/api/collection/remove', {
             method: 'POST',
@@ -193,40 +193,40 @@ async function removeFromCollectionDB(userId: number, bookId: number): Promise<b
             })
         });
 
-        console.log('📡 Remove response status:', response.status);
+        console.log('Remove response status:', response.status);
 
         const data = await response.json();
-        console.log('📊 Remove response data:', data);
+        console.log('Remove response data:', data);
 
         return data.success || false;
     } catch (error) {
-        console.error('🔥 Error in removeFromCollectionDB:', error);
+        console.error('Error in removeFromCollectionDB:', error);
         return false;
     }
 }
 
 async function checkBookStatus(userId: number, bookId: string): Promise<string> {
     try {
-        console.log('🔍 Checking book status:', { userId, bookId });
+        console.log('Checking book status:', { userId, bookId });
 
         const response = await fetch(`/api/collection/check?userId=${userId}&bookId=${bookId}`);
 
-        console.log('📡 Check status response:', response.status);
+        console.log('Check status response:', response.status);
 
         if (response.ok) {
             const data = await response.json();
-            console.log('📊 Check status data:', data);
+            console.log('Check status data:', data);
 
             if (data.success && data.inCollection && data.collectionType) {
-                console.log('✅ Book found in collection:', data.collectionType);
+                console.log('Book found in collection:', data.collectionType);
                 return data.collectionType;
             }
         }
 
-        console.log('📭 Book not in collection');
+        console.log('Book not in collection');
         return 'none';
     } catch (error) {
-        console.error('🔥 Error checking book status:', error);
+        console.error('Error checking book status:', error);
         return 'none';
     }
 }
@@ -282,24 +282,24 @@ export default function BookPage() {
             // Обновляем localStorage
             if (name) {
                 localStorage.setItem('userName', name);
-                console.log('✅ Updated userName in localStorage:', name);
+                console.log('Updated userName in localStorage:', name);
             }
             if (avatar) {
                 localStorage.setItem('userAvatar', avatar);
-                console.log('✅ Updated userAvatar in localStorage');
+                console.log('Updated userAvatar in localStorage');
             }
         }
     };
 
     useEffect(() => {
-        // ВСЕГДА берем СВЕЖИЕ данные из localStorage при загрузке
+        // Всегда берем свежие данные из localStorage при загрузке
         const savedName = localStorage.getItem('userName') || 'Имя Фамилия';
         const savedAvatar = localStorage.getItem('userAvatar') || '/img/ava.jpg';
         const savedUserId = localStorage.getItem('userId') || 'current-user';
 
-        console.log('📋 Loading fresh user data:', {
+        console.log('Loading fresh user data:', {
             name: savedName,
-            avatar: savedAvatar ? '✅' : '❌',
+            avatar: savedAvatar ? 'saved' : 'not saved',
             userId: savedUserId
         });
 
@@ -328,7 +328,7 @@ export default function BookPage() {
 
     useEffect(() => {
         if (book) {
-            console.log('📚 Book loaded, checking status for:', book.title);
+            console.log('Book loaded, checking status for:', book.title);
             loadBookStatus();
         }
     }, [book, params.id]);
@@ -347,18 +347,18 @@ export default function BookPage() {
     const loadBookStatus = async () => {
         const bookId = params.id;
         if (!bookId) {
-            console.log('❌ No book ID');
+            console.log('No book ID');
             setBookStatus('none');
             return;
         }
 
         setIsLoadingStatus(true);
 
-        console.log('🔄 Loading book status for book ID:', bookId);
+        console.log('Loading book status for book ID:', bookId);
         const userId = await getUserId();
 
         if (!userId) {
-            console.log('❌ No user ID found');
+            console.log('No user ID found');
             setBookStatus('none');
             setIsLoadingStatus(false);
             return;
@@ -366,7 +366,7 @@ export default function BookPage() {
 
         try {
             const status = await checkBookStatus(userId, bookId as string);
-            console.log('📊 Book status result:', status);
+            console.log('Book status result:', status);
 
             if (status === 'reading') setBookStatus('reading');
             else if (status === 'planned') setBookStatus('planned');
@@ -375,7 +375,7 @@ export default function BookPage() {
             else if (status === 'favorite') setBookStatus('favorite');
             else setBookStatus('none');
         } catch (error) {
-            console.error('🔥 Error loading book status:', error);
+            console.error('Error loading book status:', error);
             setBookStatus('none');
         } finally {
             setIsLoadingStatus(false);
@@ -422,11 +422,11 @@ export default function BookPage() {
 
     const saveToCollection = async (status: 'reading' | 'planned' | 'abandoned' | 'read' | 'favorite') => {
         if (!book) {
-            console.log('❌ No book to save');
+            console.log('No book to save');
             return;
         }
 
-        console.log('💡 Starting save to collection:', {
+        console.log('Starting save to collection:', {
             bookId: book.id,
             bookTitle: book.title,
             status: status
@@ -434,19 +434,19 @@ export default function BookPage() {
 
         try {
             const userId = await getUserId();
-            console.log('👤 Got userId:', userId);
+            console.log('Got userId:', userId);
 
             if (!userId) {
                 showNotification('Ошибка: пользователь не найден. Войдите в систему.', 'error');
                 return;
             }
 
-            console.log('📤 Calling saveToCollectionDB...');
+            console.log('Calling saveToCollectionDB...');
             const savedInDB = await saveToCollectionDB(userId, book.id, status);
-            console.log('📥 saveToCollectionDB result:', savedInDB);
+            console.log('saveToCollectionDB result:', savedInDB);
 
             if (savedInDB) {
-                console.log('🔄 Reloading book status...');
+                console.log('Reloading book status...');
                 await loadBookStatus();
                 setShowMenu(false);
 
@@ -467,7 +467,7 @@ export default function BookPage() {
                 showNotification('Не удалось сохранить в коллекцию', 'error');
             }
         } catch (error) {
-            console.error('🔥 Error in saveToCollection:', error);
+            console.error('Error in saveToCollection:', error);
             showNotification('Произошла ошибка при сохранении', 'error');
         }
     };
@@ -477,7 +477,7 @@ export default function BookPage() {
             return;
         }
 
-        console.log('🗑️ Removing book from collection:', book.title);
+        console.log('Removing book from collection:', book.title);
 
         try {
             const userId = await getUserId();
@@ -502,7 +502,7 @@ export default function BookPage() {
                 showNotification('Не удалось удалить из коллекции', 'error');
             }
         } catch (error) {
-            console.error('🔥 Error removing from collection:', error);
+            console.error('Error removing from collection:', error);
             showNotification('Произошла ошибка при удалении', 'error');
         }
     };
@@ -656,7 +656,7 @@ export default function BookPage() {
                 return;
             }
 
-            console.log('📤 Сохранение отзыва в БД:', {
+            console.log('Сохранение отзыва в БД:', {
                 userId,
                 bookId: book.id,
                 rating: userRating
@@ -681,7 +681,7 @@ export default function BookPage() {
                 const currentUserName = localStorage.getItem('userName') || 'Имя Фамилия';
                 const currentUserAvatar = localStorage.getItem('userAvatar') || '/img/ava.jpg';
 
-                // Создаем новый комментарий для локального состояния (не сохраняем в localStorage)
+                // Создаем новый комментарий для локального состояния
                 const newComment: Comment = {
                     id: data.reviewId || Date.now(),
                     bookId: book.id,
@@ -718,7 +718,7 @@ export default function BookPage() {
                 showNotification(`Ошибка при сохранении отзыва: ${data.error}`, 'error');
             }
         } catch (error) {
-            console.error('🔥 Error saving comment:', error);
+            console.error('Error saving comment:', error);
             showNotification('Произошла ошибка при сохранении отзыва', 'error');
         }
     };

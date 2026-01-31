@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     );
 
     console.log('Insert result:', result);
-    console.log('✅ Collection saved successfully');
+    console.log('Collection saved successfully');
 
     return NextResponse.json({
       success: true,
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       userId: userId
     });
   } catch (error) {
-    console.error('❌ Ошибка сохранения коллекции:', error);
+    console.error('Ошибка сохранения коллекции:', error);
     return NextResponse.json(
       { 
         success: false, 

@@ -6,7 +6,7 @@ const Database = require('better-sqlite3');
 const dbPath = path.join(process.cwd(), 'BookSwipe.db');
 export const db = new Database(dbPath);
 
-// СОЗДАЕМ ТАБЛИЦУ User с правильной структурой
+// СОЗДАЕМ ТАБЛИЦУ User
 db.exec(`
   CREATE TABLE IF NOT EXISTS User (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,7 +51,6 @@ db.exec(`
     UNIQUE(user_id, book_id)
   )
 `);
-// Добавьте в lib/db.ts после создания таблицы Review:
 db.exec(`
   CREATE TRIGGER IF NOT EXISTS update_book_stats 
   AFTER INSERT ON Review

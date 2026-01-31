@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('❌ Ошибка получения коллекции:', error);
+    console.error('Ошибка получения коллекции:', error);
     
     // Показываем больше информации об ошибке
     return NextResponse.json({

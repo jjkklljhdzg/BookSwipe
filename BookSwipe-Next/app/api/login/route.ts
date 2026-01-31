@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       
       const result = insertStmt.run(
         email,
-        password, // В реальном приложении нужно хэшировать пароль!
+        password,
         email.split('@')[0],
         '/img/ava.jpg'
       );
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Проверяем пароль (в реальном приложении нужно сравнивать хэши!)
+    // Проверяем пароль
     if (user.password_hash !== password) {
       console.log('Password incorrect');
       return NextResponse.json(
