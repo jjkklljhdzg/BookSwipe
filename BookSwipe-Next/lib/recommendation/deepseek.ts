@@ -8,12 +8,12 @@ export class DeepSeekService {
 
   async getRecommendations(
     likedBooks: {title: string, author: string, genres: string}[],
-    dislikedBooks: {title: string, author: string, genres: string}[], // 🔥 Добавлен параметр
+    dislikedBooks: {title: string, author: string, genres: string}[],
     readBooks: {title: string, author: string, genres: string}[],
     availableBooks: {id: number, title: string, author: string, genres: string}[]
   ): Promise<number[]> {
     
-    // 🔥 Теперь учитываем и дизлайки
+    // Теперь учитываются и дизлайки
     if (likedBooks.length === 0 && dislikedBooks.length === 0 && readBooks.length === 0) {
       return [];
     }
@@ -183,4 +183,5 @@ export class DeepSeekService {
     
     return scoredBooks.slice(0, 8).map(b => b.id);
   }
+
 }
